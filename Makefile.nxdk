@@ -1,0 +1,140 @@
+XBE_TITLE = Duke Nukem 3D
+NXDK_DIR  ?= /c/Claude/nxdk
+NXDK_SDL  = y
+
+# Ensure NXDK_DIR is exported to all subprocess invocations (nxdk-cc needs it)
+export NXDK_DIR
+
+# --- Directory layout -------------------------------------------------------
+ENGINEROOT = jfbuild
+ENGINEINC  = $(ENGINEROOT)/include
+ENGINESRC  = $(ENGINEROOT)/src
+MACTROOT   = jfmact
+AUDIOROOT  = jfaudiolib
+GAMESRC    = src
+
+# --- Compiler flags ---------------------------------------------------------
+# Xbox platform identifier (used for Xbox-specific code paths in jfbuild)
+NXDK_CFLAGS += -D_XBOX=1
+
+# Renderer: SDL software path, no OpenGL, no MASM asm
+NXDK_CFLAGS += -DRENDERTYPESDL=1
+NXDK_CFLAGS += -DUSE_POLYMOST=0
+NXDK_CFLAGS += -DUSE_OPENGL=0
+NXDK_CFLAGS += -DUSE_ASM=0
+
+# Audio: SDL driver only (no DirectSound / XAudio2 / WinMM)
+NXDK_CFLAGS += -DHAVE_SDL
+
+# OGG Vorbis music support
+NXDK_CFLAGS += -DHAVE_VORBIS
+NXDK_CFLAGS += -I$(CURDIR)/$(AUDIOROOT)/third-party/mingw/include
+
+# Include paths — must be in NXDK_CFLAGS (not CFLAGS) so they come BEFORE
+# nxdk's NXDK_CFLAGS additions (e.g. zlib adds its dir which has its own crc32.h)
+NXDK_CFLAGS += -I$(CURDIR)/xbox_compat
+NXDK_CFLAGS += -I$(CURDIR)/$(GAMESRC)
+NXDK_CFLAGS += -I$(CURDIR)/$(ENGINEINC)
+NXDK_CFLAGS += -I$(CURDIR)/$(ENGINESRC)
+NXDK_CFLAGS += -I$(CURDIR)/$(MACTROOT)
+NXDK_CFLAGS += -I$(CURDIR)/$(AUDIOROOT)/include
+NXDK_CFLAGS += -I$(CURDIR)/$(AUDIOROOT)/src
+
+# Explicit nxdk include paths using make's $(NXDK_DIR).
+# MSYS2 make.exe does NOT propagate NXDK_DIR to nxdk-cc's shell, so
+# nxdk-cc's own -I${NXDK_DIR}/... flags expand with an empty var.
+# Adding these here (evaluated by make) guarantees the correct paths reach
+# clang even when the shell variable is missing.
+NXDK_CFLAGS += -I$(NXDK_DIR)/lib/winapi
+NXDK_CFLAGS += -I$(NXDK_DIR)/lib
+NXDK_CFLAGS += -I$(NXDK_DIR)/lib/xboxrt/libc_extensions
+NXDK_CFLAGS += -isystem $(NXDK_DIR)/lib/pdclib/include
+NXDK_CFLAGS += -I$(NXDK_DIR)/lib/pdclib/platform/xbox/include
+NXDK_CFLAGS += -I$(NXDK_DIR)/lib/xboxrt/vcruntime
+
+# Force-include our Xbox compatibility shims before any other header
+NXDK_CFLAGS += -include $(CURDIR)/xbox_compat/xbox_defs.h
+
+# Suppress noisy warnings from the old codebase
+NXDK_CFLAGS += -Wno-implicit-function-declaration
+NXDK_CFLAGS += -Wno-implicit-int
+NXDK_CFLAGS += -Wno-parentheses
+NXDK_CFLAGS += -Wno-dangling-else
+
+# --- Engine sources (software renderer only, no OpenGL, no editor) ----------
+ENGINE_SRCS = \
+	$(CURDIR)/$(ENGINESRC)/a-c.c \
+	$(CURDIR)/$(ENGINESRC)/baselayer.c \
+	$(CURDIR)/$(ENGINESRC)/cache1d.c \
+	$(CURDIR)/$(ENGINESRC)/compat.c \
+	$(CURDIR)/$(ENGINESRC)/crc32.c \
+	$(CURDIR)/$(ENGINESRC)/defs.c \
+	$(CURDIR)/$(ENGINESRC)/engine.c \
+	$(CURDIR)/$(ENGINESRC)/kplib.c \
+	$(CURDIR)/$(ENGINESRC)/mmulti_null.c \
+	$(CURDIR)/$(ENGINESRC)/osd.c \
+	$(CURDIR)/$(ENGINESRC)/pragmas.c \
+	$(CURDIR)/$(ENGINESRC)/scriptfile.c \
+	$(CURDIR)/$(ENGINESRC)/sdlayer2.c \
+	$(CURDIR)/$(ENGINESRC)/startwin.c \
+	$(CURDIR)/$(ENGINESRC)/textfont.c \
+	$(CURDIR)/$(ENGINESRC)/talltextfont.c \
+	$(CURDIR)/$(ENGINESRC)/smalltextfont.c \
+	$(CURDIR)/$(ENGINESRC)/version.c
+
+# --- Game sources -----------------------------------------------------------
+GAME_SRCS = \
+	$(CURDIR)/$(GAMESRC)/game.c \
+	$(CURDIR)/$(GAMESRC)/actors.c \
+	$(CURDIR)/$(GAMESRC)/gamedef.c \
+	$(CURDIR)/$(GAMESRC)/global.c \
+	$(CURDIR)/$(GAMESRC)/menues.c \
+	$(CURDIR)/$(GAMESRC)/player.c \
+	$(CURDIR)/$(GAMESRC)/premap.c \
+	$(CURDIR)/$(GAMESRC)/sector.c \
+	$(CURDIR)/$(GAMESRC)/sounds.c \
+	$(CURDIR)/$(GAMESRC)/rts.c \
+	$(CURDIR)/$(GAMESRC)/config.c \
+	$(CURDIR)/$(GAMESRC)/osdfuncs.c \
+	$(CURDIR)/$(GAMESRC)/osdcmds.c \
+	$(CURDIR)/$(GAMESRC)/version.c
+
+# --- MACT input library -----------------------------------------------------
+MACT_SRCS = \
+	$(CURDIR)/$(MACTROOT)/util_lib.c \
+	$(CURDIR)/$(MACTROOT)/file_lib.c \
+	$(CURDIR)/$(MACTROOT)/control.c \
+	$(CURDIR)/$(MACTROOT)/keyboard.c \
+	$(CURDIR)/$(MACTROOT)/mouse.c \
+	$(CURDIR)/$(MACTROOT)/mathutil.c \
+	$(CURDIR)/$(MACTROOT)/scriplib.c \
+	$(CURDIR)/$(MACTROOT)/animlib.c
+
+# --- Audio library (SDL backend, no Windows-only drivers) -------------------
+AUDIO_SRCS = \
+	$(CURDIR)/$(AUDIOROOT)/src/drivers.c \
+	$(CURDIR)/$(AUDIOROOT)/src/fx_man.c \
+	$(CURDIR)/$(AUDIOROOT)/src/cd.c \
+	$(CURDIR)/$(AUDIOROOT)/src/multivoc.c \
+	$(CURDIR)/$(AUDIOROOT)/src/mix.c \
+	$(CURDIR)/$(AUDIOROOT)/src/mixst.c \
+	$(CURDIR)/$(AUDIOROOT)/src/pitch.c \
+	$(CURDIR)/$(AUDIOROOT)/src/music.c \
+	$(CURDIR)/$(AUDIOROOT)/src/midi.c \
+	$(CURDIR)/$(AUDIOROOT)/src/driver_nosound.c \
+	$(CURDIR)/$(AUDIOROOT)/src/driver_sdl.c \
+	$(CURDIR)/$(AUDIOROOT)/src/asssys.c \
+	$(CURDIR)/$(AUDIOROOT)/src/vorbis.c
+
+COMPAT_SRCS = \
+	$(CURDIR)/xbox_compat/posix_io.c \
+	$(CURDIR)/xbox_compat/xbox_stubs.c \
+	$(CURDIR)/xbox_compat/xbox_startup.c
+
+SRCS = $(COMPAT_SRCS) $(ENGINE_SRCS) $(GAME_SRCS) $(MACT_SRCS) $(AUDIO_SRCS)
+
+# OGG Vorbis: using stb_vorbis (included in vorbis.c), no external libs needed
+# /safeseh:no kept for any remaining mingw-style .o objects
+NXDK_LDFLAGS += /safeseh:no
+
+include $(NXDK_DIR)/Makefile

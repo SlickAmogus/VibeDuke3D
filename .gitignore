@@ -1,0 +1,9 @@
+*.obj
+*.o
+*.exe
+*.xbe
+*.res
+*.log
+*.pdb
+*.ilk
+bin/
