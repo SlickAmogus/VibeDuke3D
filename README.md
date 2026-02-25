@@ -3,7 +3,7 @@
 
 Duke Nukem 3D port for the original Xbox, based on [JFDuke3D](http://www.jonof.id.au/jfduke3d) by Jonathon Fowler. Built using the [nxdk](https://github.com/XboxDev/nxdk) open-source Xbox development kit.
 
-This project was almost entirely vibe coded using Claude. We started from scratch, using just JFDuke3D as a base and NXDK as the guy. Claude acted as the developer while I designed and did QA. After about two or three days,
+This project was almost entirely vibe coded using Claude. We started from scratch, using just JFDuke3D as a base and NXDK as the guide. Claude acted as the developer while I designed and did QA. After about two or three days,
 this is the end result. A modern, fully functional, and playable port of Duke Nukem 3D for OG Xbox with nohthing cut.
 
 ## Features
