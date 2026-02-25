@@ -1,4 +1,4 @@
-XBE_TITLE = Duke Nukem 3D
+XBE_TITLE = VibeDuke3D
 NXDK_DIR  ?= /c/Claude/nxdk
 NXDK_SDL  = y
 
@@ -17,10 +17,10 @@ GAMESRC    = src
 # Xbox platform identifier (used for Xbox-specific code paths in jfbuild)
 NXDK_CFLAGS += -D_XBOX=1
 
-# Renderer: SDL software path, no OpenGL, no MASM asm
+# Renderer: SDL display path + POLYMOST hardware renderer via GL shim
 NXDK_CFLAGS += -DRENDERTYPESDL=1
-NXDK_CFLAGS += -DUSE_POLYMOST=0
-NXDK_CFLAGS += -DUSE_OPENGL=0
+NXDK_CFLAGS += -DUSE_POLYMOST=1
+NXDK_CFLAGS += -DUSE_OPENGL=2
 NXDK_CFLAGS += -DUSE_ASM=0
 
 # Audio: SDL driver only (no DirectSound / XAudio2 / WinMM)
@@ -61,7 +61,7 @@ NXDK_CFLAGS += -Wno-implicit-int
 NXDK_CFLAGS += -Wno-parentheses
 NXDK_CFLAGS += -Wno-dangling-else
 
-# --- Engine sources (software renderer only, no OpenGL, no editor) ----------
+# --- Engine sources ---------------------------------------------------------
 ENGINE_SRCS = \
 	$(CURDIR)/$(ENGINESRC)/a-c.c \
 	$(CURDIR)/$(ENGINESRC)/baselayer.c \
@@ -80,7 +80,18 @@ ENGINE_SRCS = \
 	$(CURDIR)/$(ENGINESRC)/textfont.c \
 	$(CURDIR)/$(ENGINESRC)/talltextfont.c \
 	$(CURDIR)/$(ENGINESRC)/smalltextfont.c \
-	$(CURDIR)/$(ENGINESRC)/version.c
+	$(CURDIR)/$(ENGINESRC)/version.c \
+	$(CURDIR)/$(ENGINESRC)/glbuild_xbox.c \
+	$(CURDIR)/$(ENGINESRC)/polymost.c \
+	$(CURDIR)/$(ENGINESRC)/polymosttex.c \
+	$(CURDIR)/$(ENGINESRC)/polymosttexcache.c \
+	$(CURDIR)/$(ENGINESRC)/polymosttexcompress_stub.c \
+	$(CURDIR)/$(ENGINESRC)/mdsprite.c \
+	$(CURDIR)/$(ENGINESRC)/hightile.c \
+	$(CURDIR)/$(ENGINESRC)/polymost_vs_glsl.c \
+	$(CURDIR)/$(ENGINESRC)/polymost_fs_glsl.c \
+	$(CURDIR)/$(ENGINESRC)/polymostaux_vs_glsl.c \
+	$(CURDIR)/$(ENGINESRC)/polymostaux_fs_glsl.c
 
 # --- Game sources -----------------------------------------------------------
 GAME_SRCS = \

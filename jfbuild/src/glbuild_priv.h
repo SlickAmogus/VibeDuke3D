@@ -9,7 +9,39 @@
 
 #include "glbuild.h"
 
-#if (USE_OPENGL == USE_GLES2)
+#if defined(_XBOX)
+#  include "xbox_gl_defs.h"
+   typedef void (APIENTRYP PFNGLCULLFACEPROC) (GLenum mode);
+   typedef void (APIENTRYP PFNGLFRONTFACEPROC) (GLenum mode);
+   typedef void (APIENTRYP PFNGLHINTPROC) (GLenum target, GLenum mode);
+   typedef void (APIENTRYP PFNGLPOLYGONMODEPROC) (GLenum face, GLenum mode);
+   typedef void (APIENTRYP PFNGLSCISSORPROC) (GLint x, GLint y, GLsizei width, GLsizei height);
+   typedef void (APIENTRYP PFNGLTEXPARAMETERFPROC) (GLenum target, GLenum pname, GLfloat param);
+   typedef void (APIENTRYP PFNGLTEXPARAMETERIPROC) (GLenum target, GLenum pname, GLint param);
+   typedef void (APIENTRYP PFNGLTEXIMAGE2DPROC) (GLenum target, GLint level, GLint internalformat, GLsizei width, GLsizei height, GLint border, GLenum format, GLenum type, const void *pixels);
+   typedef void (APIENTRYP PFNGLCLEARPROC) (GLbitfield mask);
+   typedef void (APIENTRYP PFNGLCLEARCOLORPROC) (GLfloat red, GLfloat green, GLfloat blue, GLfloat alpha);
+   typedef void (APIENTRYP PFNGLCOLORMASKPROC) (GLboolean red, GLboolean green, GLboolean blue, GLboolean alpha);
+   typedef void (APIENTRYP PFNGLDEPTHMASKPROC) (GLboolean flag);
+   typedef void (APIENTRYP PFNGLDISABLEPROC) (GLenum cap);
+   typedef void (APIENTRYP PFNGLENABLEPROC) (GLenum cap);
+   typedef void (APIENTRYP PFNGLBLENDFUNCPROC) (GLenum sfactor, GLenum dfactor);
+   typedef void (APIENTRYP PFNGLDEPTHFUNCPROC) (GLenum func);
+   typedef void (APIENTRYP PFNGLPIXELSTOREIPROC) (GLenum pname, GLint param);
+   typedef void (APIENTRYP PFNGLREADPIXELSPROC) (GLint x, GLint y, GLsizei width, GLsizei height, GLenum format, GLenum type, void *pixels);
+   typedef GLenum (APIENTRYP PFNGLGETERRORPROC) (void);
+   typedef void (APIENTRYP PFNGLGETFLOATVPROC) (GLenum pname, GLfloat *data);
+   typedef void (APIENTRYP PFNGLGETINTEGERVPROC) (GLenum pname, GLint *data);
+   typedef const GLubyte *(APIENTRYP PFNGLGETSTRINGPROC) (GLenum name);
+   typedef void (APIENTRYP PFNGLDEPTHRANGEPROC) (GLdouble n, GLdouble f);
+   typedef void (APIENTRYP PFNGLVIEWPORTPROC) (GLint x, GLint y, GLsizei width, GLsizei height);
+   typedef void (APIENTRYP PFNGLDRAWELEMENTSPROC) (GLenum mode, GLsizei count, GLenum type, const void *indices);
+   typedef void (APIENTRYP PFNGLPOLYGONOFFSETPROC) (GLfloat factor, GLfloat units);
+   typedef void (APIENTRYP PFNGLTEXSUBIMAGE2DPROC) (GLenum target, GLint level, GLint xoffset, GLint yoffset, GLsizei width, GLsizei height, GLenum format, GLenum type, const void *pixels);
+   typedef void (APIENTRYP PFNGLBINDTEXTUREPROC) (GLenum target, GLuint texture);
+   typedef void (APIENTRYP PFNGLDELETETEXTURESPROC) (GLsizei n, const GLuint *textures);
+   typedef void (APIENTRYP PFNGLGENTEXTURESPROC) (GLsizei n, GLuint *textures);
+#elif (USE_OPENGL == USE_GLES2)
 #  include <GLES2/gl2.h>
 #  include <GLES2/gl2ext.h>
 #  define GL_CLAMP GL_CLAMP_TO_EDGE

@@ -340,6 +340,11 @@ int initsystem(void)
 	atexit(uninitsystem);
 
 #if USE_OPENGL
+#ifdef _XBOX
+	// Xbox: our internal GL shim is always available.
+	glunavailable = 0;
+	buildputs("Xbox: GL shim (NV2A pbkit) available.\n");
+#else
 	if (getenv("BUILD_NOGL")) {
 		buildputs("OpenGL disabled.\n");
 		glunavailable = 1;
@@ -349,6 +354,7 @@ int initsystem(void)
 			buildputs("Failed loading OpenGL driver. GL modes will be unavailable.\n");
 		}
 	}
+#endif
 
 	OSD_RegisterFunction("glswapinterval", "glswapinterval: frame swap interval for OpenGL modes. 0 = no vsync, -1 = adaptive, max 8", set_glswapinterval);
 #endif
@@ -821,6 +827,12 @@ void getvalidmodes(void)
 		for (i = 0; xbox_res[i][0]; i++) {
 			if (xbox_res[i][0] <= maxw && xbox_res[i][1] <= maxh) {
 				addvalidmode(xbox_res[i][0], xbox_res[i][1], 8, 1, 0, 60, -1);
+#if USE_POLYMOST && USE_OPENGL
+				// Xbox GL shim is always available; glunavailable hasn't been
+				// set yet (getvalidmodes runs before initsystem), so add
+				// 32-bit modes unconditionally.
+				addvalidmode(xbox_res[i][0], xbox_res[i][1], 32, 1, 0, 60, -1);
+#endif
 				xbox_log("Xbox getvalidmodes: added %dx%d\n", xbox_res[i][0], xbox_res[i][1]);
 			}
 		}
@@ -872,6 +884,7 @@ static void shutdownvideo(void)
 	if (!glunavailable) {
 		glbuild_delete_8bit_shader(&gl8bit);
 	}
+#ifndef _XBOX
 	if (sdl_glcontext) {
 #if USE_POLYMOST
 		polymost_glreset();
@@ -879,6 +892,12 @@ static void shutdownvideo(void)
 		SDL_GL_DeleteContext(sdl_glcontext);
 		sdl_glcontext = NULL;
 	}
+#else
+	// Xbox: no real GL context, but still reset polymost state.
+#if USE_POLYMOST
+	polymost_glreset();
+#endif
+#endif
 #endif
 
 	if (sdl_texture) {
@@ -1003,7 +1022,7 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 	do {
 		flags = SDL_WINDOW_HIDDEN;
 
-#if USE_OPENGL
+#if USE_OPENGL && !defined(_XBOX)
 		if (!glunavailable) {
 #if (USE_OPENGL == USE_GLES2)
 			SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_ES);
@@ -1090,7 +1109,11 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 		pitch = (((xdim|1) + 4) & ~3);
 
 #if USE_OPENGL
-		if (glunavailable) {
+		if (glunavailable
+#ifdef _XBOX
+			|| 1  // Xbox: always use SDL renderer for 8-bit. GL shim is for polymost (bpp>8) only.
+#endif
+		) {
 #endif
 			if (usesdlrenderer) {
 				// 8-bit software with no GL shader blitting goes via the SDL rendering apparatus.
@@ -1143,6 +1166,16 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 			// Prepare the GLSL shader for 8-bit blitting.
 			int winx = xdim, winy = ydim;
 
+#ifdef _XBOX
+			// Xbox: no real GL context — glbuild_xbox.c provides our shim.
+			if (glbuild_init()) {
+				glunavailable = 1;
+			} else {
+				if (glbuild_prepare_8bit_shader(&gl8bit, xdim, ydim, pitch, winx, winy) < 0) {
+					glunavailable = 1;
+				}
+			}
+#else
 			sdl_glcontext = SDL_GL_CreateContext(sdl_window);
 			if (!sdl_glcontext) {
 				buildprintf("Error creating OpenGL context: %s\n", SDL_GetError());
@@ -1155,6 +1188,7 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 					glunavailable = 1;
 				}
 			}
+#endif
 			if (glunavailable) {
 				// Try again but without OpenGL.
 				buildputs("Falling back to non-OpenGL render.\n");
@@ -1182,6 +1216,13 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 
 	} else {
 #if USE_OPENGL
+#ifdef _XBOX
+		// Xbox: no real GL context — glbuild_xbox.c provides our shim.
+		if (glbuild_init()) {
+			shutdownvideo();
+			return -1;
+		}
+#else
 		sdl_glcontext = SDL_GL_CreateContext(sdl_window);
 		if (!sdl_glcontext) {
 			buildprintf("Error creating OpenGL context: %s\n", SDL_GetError());
@@ -1192,6 +1233,7 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 			shutdownvideo();
 			return -1;
 		}
+#endif
 #if USE_POLYMOST
 		polymost_glreset();
 #endif
@@ -1214,6 +1256,7 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 	fullscreen = fullsc;
 
 #if USE_OPENGL
+#ifndef _XBOX
 	if (sdl_glcontext) {
 		if (SDL_GL_SetSwapInterval(glswapinterval) < 0) {
 			buildputs("note: OpenGL swap interval could not be changed\n");
@@ -1224,6 +1267,7 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 		SDL_GL_GetDrawableSize(sdl_window, &winx, &winy);
 		glbuild_update_window_size(&gl8bit, winx, winy);
 	}
+#endif
 #endif
 
 	videomodereset = 0;
@@ -1284,6 +1328,12 @@ void showframe(void)
 #endif
 #if USE_OPENGL
 	if (!glunavailable) {
+#ifdef _XBOX
+		// Xbox: GL shim has no real framebuffer swap.
+		// For 8-bit mode, fall through to SDL texture path below.
+		// For polymost (bpp>8), also fall through for now (no rendering yet).
+		if (bpp != 8) return;
+#else
 		if (bpp == 8) {
 			glbuild_update_8bit_frame(&gl8bit, frame, bytesperline, yres);
 			glbuild_draw_8bit_frame(&gl8bit);
@@ -1291,6 +1341,7 @@ void showframe(void)
 
 		SDL_GL_SwapWindow(sdl_window);
 		return;
+#endif
 	}
 #endif
 
@@ -1411,11 +1462,22 @@ int setsysgamma(float shadergamma, float sysgamma)
 {
 	int r = 0;
 #if USE_OPENGL
+#ifndef _XBOX
+	// Xbox: we use SDL renderer for 8-bit, not GL shader. Skip shader gamma.
 	if (!glunavailable && bpp == 8) glbuild_set_8bit_gamma(&gl8bit, shadergamma);
 #endif
+#endif
 	if (sdl_window) {
+#ifdef _XBOX
+		// Xbox: neither shader gamma nor system gamma works.
+		// Force palette-based brightness. setgamma() case 1 doesn't check
+		// ssgfailed properly, so we must set usegammabrightness directly.
+		usegammabrightness = 0;
+		r = -1;
+#else
 		if (sysgamma < 0.f) r = SDL_SetWindowBrightness(sdl_window, 1.0);
 		else r = SDL_SetWindowBrightness(sdl_window, sysgamma);
+#endif
 	}
 	if (r == 0) { curshadergamma = shadergamma; cursysgamma = sysgamma; }
 	return r;
@@ -1426,6 +1488,25 @@ int setsysgamma(float shadergamma, float sysgamma)
 //
 // loadgldriver -- loads an OpenGL DLL
 //
+#ifdef _XBOX
+int loadgldriver(const char *soname)
+{
+	(void)soname;
+	buildputs("Xbox: GL driver loaded (internal shim)\n");
+	return 0;
+}
+
+int unloadgldriver(void)
+{
+	return 0;
+}
+
+void *getglprocaddress(const char *name, int ext)
+{
+	(void)name; (void)ext;
+	return NULL;
+}
+#else
 int loadgldriver(const char *soname)
 {
 	const char *name = soname;
@@ -1452,6 +1533,7 @@ void *getglprocaddress(const char *name, int ext)
 	(void)ext;
 	return (void*)SDL_GL_GetProcAddress(name);
 }
+#endif // _XBOX
 #endif
 
 
@@ -1875,11 +1957,15 @@ static int set_glswapinterval(const osdfuncparm_t *parm)
 	interval = atoi(parm->parms[0]);
 	if (interval < -1 || interval > 8) return OSDCMD_SHOWHELP;
 
+#ifdef _XBOX
+	glswapinterval = interval;
+#else
 	if (SDL_GL_SetSwapInterval(interval) < 0) {
 		buildprintf("error: could not change swap interval: %s\n", SDL_GetError());
 	} else {
 		glswapinterval = SDL_GL_GetSwapInterval();
 	}
+#endif
 	return OSDCMD_OK;
 }
 #endif

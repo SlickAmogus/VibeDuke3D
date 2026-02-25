@@ -1,15 +1,19 @@
-/* Xbox video pre-initialization and debug logging
- * Called before main() via constructor attribute, so XVideoSetMode runs
- * before SDL_Init (SDL2's Xbox backend reads XVideoGetMode() for window size).
+/* Xbox hardware pre-initialization and debug logging.
+ * Called before main() via constructor attribute, so hardware resets run
+ * before SDL_Init.
  *
- * We read the current mode from the BIOS/dashboard setting (via XVideoGetMode)
- * and re-apply it so nxdk's HAL framebuffer is initialized at the correct size.
- * This preserves whatever the user configured: 480i, 480p, 720p, or 1080i. */
+ * - AC97 cold reset: clears stale audio DMA/interrupts from dashboard or
+ *   previous app launch.  Without this, audio may not work on re-launch.
+ * - Video mode: re-applies dashboard-configured resolution so nxdk HAL
+ *   framebuffer matches (480i/480p/720p/1080i autodetect). */
 
 #include <hal/video.h>
+#include <hal/audio.h>
 #include <hal/debug.h>
+#include <hal/xbox.h>
 #include <stdarg.h>
 #include <stdio.h>    /* vsnprintf */
+#include <stdlib.h>   /* atexit */
 #include <string.h>
 #include "fcntl.h"    /* _O_WRONLY / _O_CREAT / _O_TRUNC */
 
@@ -43,20 +47,38 @@ void xbox_log(const char *fmt, ...)
         _write(xbox_log_fd, buf, (unsigned)len);
 }
 
-__attribute__((constructor))
-static void xbox_video_preinit(void)
+/* atexit handler: stop audio DMA and pause hardware before the quick-reboot
+ * that nxdk's exit() triggers.  This gives the next app launch a cleaner
+ * starting state. */
+static void xbox_cleanup(void)
 {
+    xbox_log("XBOX: cleanup — pausing audio hardware\n");
+    XAudioPause();
+}
+
+__attribute__((constructor))
+static void xbox_hw_preinit(void)
+{
+    /* --- AC97 audio cold reset ---
+     * Quick-reboots may leave the AC97 controller with stale DMA descriptors,
+     * running engines, or pending interrupts.  XAudioInit performs a full cold
+     * reset (toggle bit 1 of MMIO 0x12C, wait for 0x130 bit 8, reset
+     * busmasters, clear IRQs, enable S/PDIF PCI bit, re-register ISR).
+     * Passing NULL callback leaves audio paused. */
+    XAudioInit(16, 2, NULL, NULL);
+
+    /* --- Video mode --- */
     VIDEO_MODE vm = XVideoGetMode();
     if (vm.width > 0 && vm.height > 0) {
-        /* Re-apply the dashboard-configured mode at 32bpp. */
         XVideoSetMode(vm.width, vm.height, 32, REFRESH_DEFAULT);
     } else {
-        /* Fallback if no mode was configured: 480p */
         XVideoSetMode(640, 480, 32, REFRESH_60HZ);
     }
 
-    /* Open log file using _open → NtCreateFile (same path that reads GRP).
-     * Try several locations; whichever succeeds first is used. */
+    /* Register cleanup handler (runs before exit()'s HalReturnToFirmware). */
+    atexit(xbox_cleanup);
+
+    /* Open log file */
     static const char * const log_paths[] = {
         "D:\\dn3d_debug.log",
         "E:\\test_xemu.log",

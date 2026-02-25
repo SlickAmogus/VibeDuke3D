@@ -14,7 +14,7 @@ cd /c/Claude/jfduke3d-xbox
 
 # Compile xbox_startup.c manually from this shell (Git Bash) so NXDK_DIR
 # propagates correctly to nxdk-cc. MSYS2 make loses NXDK_DIR in subprocesses.
-NXDK_CFLAGS_COMMON="-DRENDERTYPESDL=1 -DUSE_POLYMOST=0 -DUSE_OPENGL=0 -DUSE_ASM=0 -DHAVE_SDL \
+NXDK_CFLAGS_COMMON="-DRENDERTYPESDL=1 -DUSE_POLYMOST=1 -DUSE_OPENGL=2 -DUSE_ASM=0 -D_XBOX=1 -DHAVE_SDL \
   -I/c/Claude/jfduke3d-xbox/xbox_compat \
   -I/c/Claude/jfduke3d-xbox/src \
   -I/c/Claude/jfduke3d-xbox/jfbuild/include \

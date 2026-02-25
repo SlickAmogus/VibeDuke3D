@@ -2502,21 +2502,21 @@ if (!VOLUMEALL) {
         {
             c = (320>>1)-120;
 #ifdef _XBOX
-            /* Xbox: Resolution, Filtering, Apply, Brightness. */
+            /* Xbox: Renderer, Resolution, Filtering, Apply, Brightness. */
             {
                 extern int xbox_bilinear;
                 extern void xbox_apply_filter(void);
-                const int keys[] = {sc_R, sc_F, sc_A, sc_B, 0};
-                i = 4;
-                onbar = (probey == 3);
-                if (probey <= 1)
+                const int keys[] = {sc_E, sc_R, sc_F, sc_A, sc_B, 0};
+                i = 5;
+                onbar = (probey == 4);
+                if (probey <= 2)
                     x = probekeys(c+6,50,16,i,keys);
-                else if (probey == 2)
-                    x = probekeys(c+6,50+16+22,0,i,keys);
+                else if (probey == 3)
+                    x = probekeys(c+6,50+16*2+22,0,i,keys);
                 else
-                    x = probekeys(c+6,50+16+22-16,16,i,keys);
+                    x = probekeys(c+6,128-4*16,16,i,keys);
 
-                if (probey <= 1 && (uinfo.dir == dir_West || uinfo.dir == dir_East)) {
+                if (probey <= 2 && (uinfo.dir == dir_West || uinfo.dir == dir_East)) {
                     sound(PISTOL_BODYHIT);
                     x = probey;
                 }
@@ -2527,22 +2527,45 @@ if (!VOLUMEALL) {
                         probey = 2;
                         break;
 
-                    case 0: // Resolution — cycle through Xbox modes.
+                    case 0: // Renderer — toggle Software/Polymost.
                         {
-                            int dir = uinfo.dir == dir_West ? -1 : 1;
-                            int mode = newvidmode + dir;
-                            if (mode < 0) mode = 0;
-                            else if (mode >= validmodecnt) mode = validmodecnt - 1;
-                            newvidmode = mode;
+                            int curbpp = validmode[newvidmode].bpp;
+                            int newbpp = (curbpp == 8) ? 32 : 8;
+                            int curw = validmode[newvidmode].xdim;
+                            int curh = validmode[newvidmode].ydim;
+                            int best = -1, j;
+                            for (j = 0; j < validmodecnt; j++) {
+                                if (validmode[j].bpp == newbpp) {
+                                    if (best < 0) best = j;
+                                    if (validmode[j].xdim == curw && validmode[j].ydim == curh) {
+                                        best = j;
+                                        break;
+                                    }
+                                }
+                            }
+                            if (best >= 0) newvidmode = best;
                         }
                         break;
 
-                    case 1: // Filtering — toggle nearest/bilinear.
+                    case 1: // Resolution — cycle through modes with matching BPP.
+                        {
+                            int dir = uinfo.dir == dir_West ? -1 : 1;
+                            int curbpp = validmode[newvidmode].bpp;
+                            int mode = newvidmode;
+                            do {
+                                mode += dir;
+                            } while (mode >= 0 && mode < validmodecnt && validmode[mode].bpp != curbpp);
+                            if (mode >= 0 && mode < validmodecnt && validmode[mode].bpp == curbpp)
+                                newvidmode = mode;
+                        }
+                        break;
+
+                    case 2: // Filtering — toggle nearest/bilinear.
                         xbox_bilinear = !xbox_bilinear;
                         xbox_apply_filter();
                         break;
 
-                    case 2: // Apply changes.
+                    case 3: // Apply changes.
                         if (newvidmode != curvidmode) {
                             int pxdim=xdim, pydim=ydim, pfs=fullscreen, pbpp=bpp;
 
@@ -2563,28 +2586,31 @@ if (!VOLUMEALL) {
                         }
                         break;
 
-                    case 3: // Brightness.
+                    case 4: // Brightness.
                         break;
                 }
             }
 
-            menutext(c,50,0,0,"RESOLUTION");
-            snprintf(buf,sizeof(buf),"%d X %d",validmode[newvidmode].xdim,validmode[newvidmode].ydim);
-            gametext(c+154,50-8,buf,0,2+8+16);
+            menutext(c,50,0,0,"RENDERER");
+            gametext(c+154,50-8,validmode[newvidmode].bpp==32 ? "POLYMOST" : "SOFTWARE",0,2+8+16);
 
-            menutext(c,50+16,0,0,"FILTERING");
+            menutext(c,66,0,0,"RESOLUTION");
+            snprintf(buf,sizeof(buf),"%d X %d",validmode[newvidmode].xdim,validmode[newvidmode].ydim);
+            gametext(c+154,66-8,buf,0,2+8+16);
+
+            menutext(c,82,0,0,"FILTERING");
             {
                 extern int xbox_bilinear;
-                gametext(c+154,50+16-8,xbox_bilinear ? "BILINEAR" : "NEAREST",0,2+8+16);
+                gametext(c+154,82-8,xbox_bilinear ? "BILINEAR" : "NEAREST",0,2+8+16);
             }
 
-            menutext(c+16,50+16+22,0,newvidmode==curvidmode,"APPLY CHANGES");
+            menutext(c+16,50+16*2+22,0,newvidmode==curvidmode,"APPLY CHANGES");
 
-            menutext(c,50+16+22+24,SHX(-6),PHX(-6),"BRIGHTNESS");
+            menutext(c,128,SHX(-6),PHX(-6),"BRIGHTNESS");
             {
                 short ss = ud.brightness;
-                bar(c+167,50+16+22+24,&ss,8,x==3,SHX(-6),PHX(-6));
-                if(x==3) {
+                bar(c+167,128,&ss,8,x==4,SHX(-6),PHX(-6));
+                if(x==4) {
                     ud.brightness = ss;
                     setbrightness(ud.brightness>>2,&ps[myconnectindex].palette[0],0);
                 }
