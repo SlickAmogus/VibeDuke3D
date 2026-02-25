@@ -10,19 +10,19 @@ export PATH="/c/Claude/nxdk/bin:$PATH"
 # with nxdk's headers. nxdk-cc gets all needed paths via explicit -I flags.
 unset INCLUDE LIB LIBPATH
 
-cd /c/Claude/jfduke3d
+cd /c/Claude/jfduke3d-xbox
 
 # Compile xbox_startup.c manually from this shell (Git Bash) so NXDK_DIR
 # propagates correctly to nxdk-cc. MSYS2 make loses NXDK_DIR in subprocesses.
 NXDK_CFLAGS_COMMON="-DRENDERTYPESDL=1 -DUSE_POLYMOST=0 -DUSE_OPENGL=0 -DUSE_ASM=0 -DHAVE_SDL \
-  -I/c/Claude/jfduke3d/xbox_compat \
-  -I/c/Claude/jfduke3d/src \
-  -I/c/Claude/jfduke3d/jfbuild/include \
-  -I/c/Claude/jfduke3d/jfbuild/src \
-  -I/c/Claude/jfduke3d/jfmact \
-  -I/c/Claude/jfduke3d/jfaudiolib/include \
-  -I/c/Claude/jfduke3d/jfaudiolib/src \
-  -include /c/Claude/jfduke3d/xbox_compat/xbox_defs.h \
+  -I/c/Claude/jfduke3d-xbox/xbox_compat \
+  -I/c/Claude/jfduke3d-xbox/src \
+  -I/c/Claude/jfduke3d-xbox/jfbuild/include \
+  -I/c/Claude/jfduke3d-xbox/jfbuild/src \
+  -I/c/Claude/jfduke3d-xbox/jfmact \
+  -I/c/Claude/jfduke3d-xbox/jfaudiolib/include \
+  -I/c/Claude/jfduke3d-xbox/jfaudiolib/src \
+  -include /c/Claude/jfduke3d-xbox/xbox_compat/xbox_defs.h \
   -Wno-implicit-function-declaration -Wno-implicit-int -Wno-parentheses -Wno-dangling-else \
   -I/c/Claude/nxdk/lib/winapi/winmm \
   -I/c/Claude/nxdk/lib/usb/libusbohci/inc \

@@ -50,6 +50,9 @@ static SDL_Texture *sdl_texture;	// For non-GL 8-bit mode output.
 static SDL_Surface *sdl_surface;	// For non-GL 8-bit mode output.
 static SDL_Surface *sdl_appicon;
 static int usesdlrenderer = 0;
+#ifdef _XBOX
+int xbox_bilinear = 0;  /* 0=nearest, 1=bilinear upscaling */
+#endif
 static unsigned char *frame;
 static float curshadergamma = 1.f, cursysgamma = -1.f;
 
@@ -802,6 +805,28 @@ void getvalidmodes(void)
 
 	if (validmodecnt) return;
 
+#ifdef _XBOX
+	/* Xbox: display resolution is fixed at boot (XVideoGetMode).
+	 * These are *render* resolutions — the Build engine framebuffer size.
+	 * SDL_RenderCopy upscales the texture to the display window. */
+	{
+		VIDEO_MODE vm = XVideoGetMode();
+		int maxw = vm.width > 0 ? vm.width : 640;
+		int maxh = vm.height > 0 ? vm.height : 480;
+		static const int xbox_res[][2] = {
+			{320, 200}, {320, 240}, {640, 400}, {640, 480},
+			{1280, 720}, {1920, 1080}, {0, 0}
+		};
+		xbox_log("Xbox getvalidmodes: display %dx%d\n", maxw, maxh);
+		for (i = 0; xbox_res[i][0]; i++) {
+			if (xbox_res[i][0] <= maxw && xbox_res[i][1] <= maxh) {
+				addvalidmode(xbox_res[i][0], xbox_res[i][1], 8, 1, 0, 60, -1);
+				xbox_log("Xbox getvalidmodes: added %dx%d\n", xbox_res[i][0], xbox_res[i][1]);
+			}
+		}
+		sortvalidmodes();
+	}
+#else
 	// Fullscreen modes
 	for (i=0; i<displaycnt; i++) {
 		// 8-bit modes upsample to the desktop.
@@ -833,6 +858,7 @@ void getvalidmodes(void)
 #endif
 
 	sortvalidmodes();
+#endif /* _XBOX */
 }
 
 static void shutdownvideo(void)
@@ -891,8 +917,8 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 
 	display = fullsc>>8;
 #ifdef _XBOX
-	/* Xbox: bypass checkvideomode entirely — SDL display enumeration may fail.
-	 * Inject a fake 1280x720 display entry if needed and skip straight to window creation. */
+	/* Xbox: nxdk SDL only supports one window — can't destroy and recreate.
+	 * If the window already exists, just resize the texture/framebuffer. */
 	xbox_log("Xbox: setvideomode %dx%d bpp=%d fullsc=%d disp_cnt=%d\n",
 		xdim, ydim, bitspp, fullsc, displaycnt);
 	{
@@ -907,6 +933,52 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 	}
 	display = 0;
 	fullsc = 0;  /* windowed — Xbox has no window manager, SDL handles display directly */
+
+	if (sdl_window && sdl_renderer) {
+		/* Window already exists — just recreate texture + framebuffer at new size. */
+		int i, j, pitch;
+
+		if (baselayer_videomodewillchange) baselayer_videomodewillchange();
+
+		/* Free old texture and framebuffer */
+		if (sdl_texture) { SDL_DestroyTexture(sdl_texture); sdl_texture = NULL; }
+		if (frame) { free(frame); frame = NULL; }
+
+		/* New texture at the requested render resolution */
+		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, xbox_bilinear ? "linear" : "nearest");
+		sdl_texture = SDL_CreateTexture(sdl_renderer,
+			B_LITTLE_ENDIAN ? SDL_PIXELFORMAT_ABGR8888 : SDL_PIXELFORMAT_RGBA8888,
+			SDL_TEXTUREACCESS_STREAMING, xdim, ydim);
+		xbox_log("Xbox: resize texture %dx%d -> %s\n", xdim, ydim,
+			sdl_texture ? "OK" : SDL_GetError());
+		if (!sdl_texture) {
+			buildprintf("XBOX: setvideomode(%d,%d,%d,%d) FAILED\n", xdim, ydim, bitspp, fullsc);
+			return -1;
+		}
+
+		/* New framebuffer */
+		pitch = (((xdim|1) + 4) & ~3);
+		frame = (unsigned char *) malloc(pitch * ydim);
+		if (!frame) { buildputs("Unable to allocate framebuffer\n"); return -1; }
+
+		frameplace = (intptr_t) frame;
+		bytesperline = pitch;
+		imageSize = bytesperline * ydim;
+		numpages = 1;
+		setvlinebpl(bytesperline);
+		for (i = j = 0; i <= ydim; i++) { ylookup[i] = j; j += bytesperline; }
+
+		xres = xdim; yres = ydim; bpp = bitspp; fullscreen = fullsc;
+		videomodereset = 0;
+		OSD_ResizeDisplay(xres, yres);
+		if (baselayer_videomodedidchange) baselayer_videomodedidchange();
+		if (regrab) grabmouse(1);
+
+		xbox_log("XBOX: setvideomode done: xdim=%d ydim=%d xres=%d yres=%d\n",
+			xdim, ydim, xres, yres);
+		return 0;
+	}
+	/* First call — fall through to create window + renderer + texture */
 #else
 	if (display >= displaycnt) display = 0, fullsc &= 255; // Display number out of range, use primary instead.
 	modenum = checkvideomode(&xdim,&ydim,bitspp,fullsc,0);	// Will return if GL mode not available.
@@ -1022,7 +1094,11 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 #endif
 			if (usesdlrenderer) {
 				// 8-bit software with no GL shader blitting goes via the SDL rendering apparatus.
+#ifdef _XBOX
+				SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, xbox_bilinear ? "linear" : "nearest");
+#else
 				SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
+#endif
 
 				sdl_renderer = SDL_CreateRenderer(sdl_window, -1,
 #ifdef _XBOX
@@ -1166,6 +1242,23 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 
 	return 0;
 }
+
+#ifdef _XBOX
+/* Recreate the SDL texture with the current xbox_bilinear hint.
+ * Called from the menu when the user toggles filtering. */
+void xbox_apply_filter(void)
+{
+	if (!sdl_renderer || !sdl_texture) return;
+	SDL_DestroyTexture(sdl_texture);
+	SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, xbox_bilinear ? "linear" : "nearest");
+	sdl_texture = SDL_CreateTexture(sdl_renderer,
+		B_LITTLE_ENDIAN ? SDL_PIXELFORMAT_ABGR8888 : SDL_PIXELFORMAT_RGBA8888,
+		SDL_TEXTUREACCESS_STREAMING, xres, yres);
+	xbox_log("Xbox: filter=%s texture=%s\n",
+		xbox_bilinear ? "linear" : "nearest",
+		sdl_texture ? "OK" : SDL_GetError());
+}
+#endif
 
 
 //
@@ -1399,6 +1492,12 @@ static void loadappicon(void)
 //
 int handleevents(void)
 {
+#ifdef _XBOX
+	/* Yield CPU briefly so the SDL audio thread can run.
+	 * On single-core Xbox (and xemu), the audio callback thread may
+	 * starve if the main thread never sleeps. */
+	SDL_Delay(1);
+#endif
 	int code, rv=0, j, control;
 	SDL_Event ev;
 	static int firstcall = 1;

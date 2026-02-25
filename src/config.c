@@ -79,8 +79,8 @@ int32 JoystickAnalogueSaturate[MAXJOYAXES];
 #ifdef _XBOX
 int32 ScreenMode = 1;
 int32 ScreenDisplay = 0;
-int32 ScreenWidth = 320;
-int32 ScreenHeight = 240;
+int32 ScreenWidth = 640;
+int32 ScreenHeight = 480;
 int32 ScreenBPP = 8;
 #else
 int32 ScreenMode = 1;

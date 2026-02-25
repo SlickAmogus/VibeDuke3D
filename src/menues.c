@@ -690,6 +690,18 @@ int saveplayer(signed char spot)
 
 static void preparevideomenu(void)
 {
+#ifdef _XBOX
+    /* Xbox: checkvideomode() is bypassed in setvideomode(), so find the
+     * current mode by matching xdim/ydim against the validmode[] table. */
+    int i;
+    curvidmode = newvidmode = 0;
+    for (i = 0; i < validmodecnt; i++) {
+        if (validmode[i].xdim == xdim && validmode[i].ydim == ydim) {
+            curvidmode = newvidmode = i;
+            break;
+        }
+    }
+#else
     int dax, day;
 
     dax = xdim; day = ydim;
@@ -701,6 +713,7 @@ static void preparevideomenu(void)
     if (curvidmode == VIDEOMODE_RELAXED) {
         curvidmode = newvidmode = 0;
     }
+#endif
 }
 
 void onvideomodechange(void)
@@ -2438,129 +2451,221 @@ if (!VOLUMEALL) {
 
         {
             c = (320>>1)-120;
-#if USE_POLYMOST && USE_OPENGL
-            i = 6;
-            const int keys[] = {sc_R, sc_V, sc_D, sc_A, sc_B, sc_I, 0};
-#else
-            i = 5;
-            const int keys[] = {sc_R, sc_V, sc_D, sc_A, sc_B, 0};
-#endif
-            onbar = (probey == 4);
-            if (probey <= 2)
-                x = probekeys(c+6,50,16,i,keys);
-            else if (probey == 3)
-                x = probekeys(c+6,50+16+16+22,0,i,keys);
-            else
-                x = probekeys(c+6,50+62-16-16-16,16,i,keys);
+#ifdef _XBOX
+            /* Xbox: Resolution, Filtering, Apply, Brightness. */
+            {
+                extern int xbox_bilinear;
+                extern void xbox_apply_filter(void);
+                const int keys[] = {sc_R, sc_F, sc_A, sc_B, 0};
+                i = 4;
+                onbar = (probey == 3);
+                if (probey <= 1)
+                    x = probekeys(c+6,50,16,i,keys);
+                else if (probey == 2)
+                    x = probekeys(c+6,50+16+22,0,i,keys);
+                else
+                    x = probekeys(c+6,50+16+22-16,16,i,keys);
 
-            if ((probey >= 0 && probey <= 2) && (uinfo.dir == dir_West || uinfo.dir == dir_East)) {
-                sound(PISTOL_BODYHIT);
-                x = probey;
-            }
+                if (probey <= 1 && (uinfo.dir == dir_West || uinfo.dir == dir_East)) {
+                    sound(PISTOL_BODYHIT);
+                    x = probey;
+                }
 
-            switch (x) {
-                case -1:
-                    cmenu(200);
-                    probey = 2;
-                    break;
+                switch (x) {
+                    case -1:
+                        cmenu(200);
+                        probey = 2;
+                        break;
 
-                case 0: // Resolution.
-                case 1: // Colour mode.
-                case 2: // Fullscreen/display.
-                    {
-                        int dir = uinfo.dir == dir_West ? -1 : 1;
-                        int vs = validmode[newvidmode].validmodeset;
-                        int dax, day, mode;
-
-                        if (x == 0) {
-                            mode = newvidmode + dir;
-                            if (mode < validmodeset[vs].firstmode) mode = validmodeset[vs].firstmode;
-                            else if (mode > validmodeset[vs].lastmode) mode = validmodeset[vs].lastmode;
+                    case 0: // Resolution — cycle through Xbox modes.
+                        {
+                            int dir = uinfo.dir == dir_West ? -1 : 1;
+                            int mode = newvidmode + dir;
+                            if (mode < 0) mode = 0;
+                            else if (mode >= validmodecnt) mode = validmodecnt - 1;
                             newvidmode = mode;
-                        } else if (x == 1) {
-                            if (dir < 0) vs = validmodeset[vs].prevbppmodeset;
-                            else if (dir > 0) vs = validmodeset[vs].nextbppmodeset;
-                        } else if (x == 2) {
-                            if (dir < 0) vs = validmodeset[vs].prevfsmodeset;
-                            else if (dir > 0) vs = validmodeset[vs].nextfsmodeset;
                         }
-                        if (vs < 0) vs = validmode[newvidmode].validmodeset;
+                        break;
 
-                        dax = validmode[newvidmode].xdim;
-                        day = validmode[newvidmode].ydim;
-                        newvidmode = checkvideomode(&dax, &day, validmodeset[vs].bpp,
-                            SETGAMEMODE_FULLSCREEN(validmodeset[vs].display, validmodeset[vs].fs), 1);
-                        if (newvidmode < 0) newvidmode = curvidmode;
-                    }
-                    break;
+                    case 1: // Filtering — toggle nearest/bilinear.
+                        xbox_bilinear = !xbox_bilinear;
+                        xbox_apply_filter();
+                        break;
 
-                case 3: // Apply changes.
-                    if (newvidmode != curvidmode) {
-                        int pxdim=xdim, pydim=ydim, pfs=fullscreen, pbpp=bpp;
+                    case 2: // Apply changes.
+                        if (newvidmode != curvidmode) {
+                            int pxdim=xdim, pydim=ydim, pfs=fullscreen, pbpp=bpp;
 
-                        if (setgamemode(SETGAMEMODE_FULLSCREEN(validmode[newvidmode].display, validmode[newvidmode].fs),
-                                validmode[newvidmode].xdim, validmode[newvidmode].ydim, validmode[newvidmode].bpp) < 0) {
-                            if (setgamemode(pfs, pxdim, pydim, pbpp) < 0) {
-                                gameexit("Failed restoring old video mode.");
+                            if (setgamemode(SETGAMEMODE_FULLSCREEN(validmode[newvidmode].display, validmode[newvidmode].fs),
+                                    validmode[newvidmode].xdim, validmode[newvidmode].ydim, validmode[newvidmode].bpp) < 0) {
+                                if (setgamemode(pfs, pxdim, pydim, pbpp) < 0) {
+                                    gameexit("Failed restoring old video mode.");
+                                }
+                            } else {
+                                curvidmode = newvidmode;
+                                ScreenMode = validmode[newvidmode].fs;
+                                ScreenDisplay = validmode[newvidmode].display;
+                                ScreenWidth = validmode[newvidmode].xdim;
+                                ScreenHeight = validmode[newvidmode].ydim;
+                                ScreenBPP = validmode[newvidmode].bpp;
+                                onvideomodechange();
                             }
-                        } else {
-                            curvidmode = newvidmode;
-                            ScreenMode = validmode[newvidmode].fs;
-                            ScreenDisplay = validmode[newvidmode].display;
-                            ScreenWidth = validmode[newvidmode].xdim;
-                            ScreenHeight = validmode[newvidmode].ydim;
-                            ScreenBPP = validmode[newvidmode].bpp;
-                            onvideomodechange();
                         }
-                    }
-                    break;
+                        break;
 
-                case 4: // Brightness.
-                    break;
+                    case 3: // Brightness.
+                        break;
+                }
+            }
+
+            menutext(c,50,0,0,"RESOLUTION");
+            snprintf(buf,sizeof(buf),"%d X %d",validmode[newvidmode].xdim,validmode[newvidmode].ydim);
+            gametext(c+154,50-8,buf,0,2+8+16);
+
+            menutext(c,50+16,0,0,"FILTERING");
+            {
+                extern int xbox_bilinear;
+                gametext(c+154,50+16-8,xbox_bilinear ? "BILINEAR" : "NEAREST",0,2+8+16);
+            }
+
+            menutext(c+16,50+16+22,0,newvidmode==curvidmode,"APPLY CHANGES");
+
+            menutext(c,50+16+22+24,SHX(-6),PHX(-6),"BRIGHTNESS");
+            {
+                short ss = ud.brightness;
+                bar(c+167,50+16+22+24,&ss,8,x==3,SHX(-6),PHX(-6));
+                if(x==3) {
+                    ud.brightness = ss;
+                    setbrightness(ud.brightness>>2,&ps[myconnectindex].palette[0],0);
+                }
+            }
+#else
+            {
+#if USE_POLYMOST && USE_OPENGL
+                i = 6;
+                const int keys[] = {sc_R, sc_V, sc_D, sc_A, sc_B, sc_I, 0};
+#else
+                i = 5;
+                const int keys[] = {sc_R, sc_V, sc_D, sc_A, sc_B, 0};
+#endif
+                onbar = (probey == 4);
+                if (probey <= 2)
+                    x = probekeys(c+6,50,16,i,keys);
+                else if (probey == 3)
+                    x = probekeys(c+6,50+16+16+22,0,i,keys);
+                else
+                    x = probekeys(c+6,50+62-16-16-16,16,i,keys);
+
+                if ((probey >= 0 && probey <= 2) && (uinfo.dir == dir_West || uinfo.dir == dir_East)) {
+                    sound(PISTOL_BODYHIT);
+                    x = probey;
+                }
+
+                switch (x) {
+                    case -1:
+                        cmenu(200);
+                        probey = 2;
+                        break;
+
+                    case 0: // Resolution.
+                    case 1: // Colour mode.
+                    case 2: // Fullscreen/display.
+                        {
+                            int dir = uinfo.dir == dir_West ? -1 : 1;
+                            int vs = validmode[newvidmode].validmodeset;
+                            int dax, day, mode;
+
+                            if (x == 0) {
+                                mode = newvidmode + dir;
+                                if (mode < validmodeset[vs].firstmode) mode = validmodeset[vs].firstmode;
+                                else if (mode > validmodeset[vs].lastmode) mode = validmodeset[vs].lastmode;
+                                newvidmode = mode;
+                            } else if (x == 1) {
+                                if (dir < 0) vs = validmodeset[vs].prevbppmodeset;
+                                else if (dir > 0) vs = validmodeset[vs].nextbppmodeset;
+                            } else if (x == 2) {
+                                if (dir < 0) vs = validmodeset[vs].prevfsmodeset;
+                                else if (dir > 0) vs = validmodeset[vs].nextfsmodeset;
+                            }
+                            if (vs < 0) vs = validmode[newvidmode].validmodeset;
+
+                            dax = validmode[newvidmode].xdim;
+                            day = validmode[newvidmode].ydim;
+                            newvidmode = checkvideomode(&dax, &day, validmodeset[vs].bpp,
+                                SETGAMEMODE_FULLSCREEN(validmodeset[vs].display, validmodeset[vs].fs), 1);
+                            if (newvidmode < 0) newvidmode = curvidmode;
+                        }
+                        break;
+
+                    case 3: // Apply changes.
+                        if (newvidmode != curvidmode) {
+                            int pxdim=xdim, pydim=ydim, pfs=fullscreen, pbpp=bpp;
+
+                            if (setgamemode(SETGAMEMODE_FULLSCREEN(validmode[newvidmode].display, validmode[newvidmode].fs),
+                                    validmode[newvidmode].xdim, validmode[newvidmode].ydim, validmode[newvidmode].bpp) < 0) {
+                                if (setgamemode(pfs, pxdim, pydim, pbpp) < 0) {
+                                    gameexit("Failed restoring old video mode.");
+                                }
+                            } else {
+                                curvidmode = newvidmode;
+                                ScreenMode = validmode[newvidmode].fs;
+                                ScreenDisplay = validmode[newvidmode].display;
+                                ScreenWidth = validmode[newvidmode].xdim;
+                                ScreenHeight = validmode[newvidmode].ydim;
+                                ScreenBPP = validmode[newvidmode].bpp;
+                                onvideomodechange();
+                            }
+                        }
+                        break;
+
+                    case 4: // Brightness.
+                        break;
 
 #if USE_POLYMOST && USE_OPENGL
-                case 5: // Filtering.
-                    if (bpp==8) break;
-                    switch (gltexfiltermode) {
-                        case 0: gltexfiltermode = 5; break;
-                        case 3: gltexfiltermode = 5; break;
-                        case 5: gltexfiltermode = 0; break;
-                        default: gltexfiltermode = 5; break;
-                    }
-                    gltexapplyprops();
-                    break;
+                    case 5: // Filtering.
+                        if (bpp==8) break;
+                        switch (gltexfiltermode) {
+                            case 0: gltexfiltermode = 5; break;
+                            case 3: gltexfiltermode = 5; break;
+                            case 5: gltexfiltermode = 0; break;
+                            default: gltexfiltermode = 5; break;
+                        }
+                        gltexapplyprops();
+                        break;
 #endif
+                }
             }
-        }
 
-        menutext(c,50,0,0,"RESOLUTION");
-        snprintf(buf,sizeof(buf),"%d X %d",validmode[newvidmode].xdim,validmode[newvidmode].ydim);
-        gametext(c+154,50-8,buf,0,2+8+16);
-        
-        menutext(c,50+16,0,0,"VIDEO MODE");
-        snprintf(buf,sizeof(buf),"%d-BPP",validmode[newvidmode].bpp);
-        gametext(c+154,50+16-8,buf,0,2+8+16);
+            menutext(c,50,0,0,"RESOLUTION");
+            snprintf(buf,sizeof(buf),"%d X %d",validmode[newvidmode].xdim,validmode[newvidmode].ydim);
+            gametext(c+154,50-8,buf,0,2+8+16);
 
-        menutext(c,50+16+16,0,0,"DISPLAY");
-        if (!validmode[newvidmode].fs) gametext(c+154,50+16+16-8,"WINDOWED",0,2+8+16);
-        else if (displaycnt>1) {
-            int l = snprintf(buf,sizeof(buf),"%d: %s",validmode[newvidmode].display,
-                getdisplayname(validmode[newvidmode].display));
-            if (l>12) strcpy(&buf[12-3],"...");
-            gametext(c+154,50+16+16-8,buf,0,2+8+16);
-        }
-        else gametext(c+154,50+16+16-8,"FULLSCREEN",0,2+8+16);
+            menutext(c,50+16,0,0,"VIDEO MODE");
+            snprintf(buf,sizeof(buf),"%d-BPP",validmode[newvidmode].bpp);
+            gametext(c+154,50+16-8,buf,0,2+8+16);
 
-        menutext(c+16,50+16+16+22,0,newvidmode==curvidmode,"APPLY CHANGES");
-        
-        menutext(c,50+62+16,SHX(-6),PHX(-6),"BRIGHTNESS");
-        {
-            short ss = ud.brightness;
-            bar(c+167,50+62+16,&ss,8,x==4,SHX(-6),PHX(-6));
-            if(x==4) {
-                ud.brightness = ss;
-                setbrightness(ud.brightness>>2,&ps[myconnectindex].palette[0],0);
+            menutext(c,50+16+16,0,0,"DISPLAY");
+            if (!validmode[newvidmode].fs) gametext(c+154,50+16+16-8,"WINDOWED",0,2+8+16);
+            else if (displaycnt>1) {
+                int l = snprintf(buf,sizeof(buf),"%d: %s",validmode[newvidmode].display,
+                    getdisplayname(validmode[newvidmode].display));
+                if (l>12) strcpy(&buf[12-3],"...");
+                gametext(c+154,50+16+16-8,buf,0,2+8+16);
             }
+            else gametext(c+154,50+16+16-8,"FULLSCREEN",0,2+8+16);
+
+            menutext(c+16,50+16+16+22,0,newvidmode==curvidmode,"APPLY CHANGES");
+
+            menutext(c,50+62+16,SHX(-6),PHX(-6),"BRIGHTNESS");
+            {
+                short ss = ud.brightness;
+                bar(c+167,50+62+16,&ss,8,x==4,SHX(-6),PHX(-6));
+                if(x==4) {
+                    ud.brightness = ss;
+                    setbrightness(ud.brightness>>2,&ps[myconnectindex].palette[0],0);
+                }
+            }
+#endif /* _XBOX */
         }
 
 #if USE_POLYMOST && USE_OPENGL

@@ -59,6 +59,7 @@ static void xbox_video_preinit(void)
      * Try several locations; whichever succeeds first is used. */
     static const char * const log_paths[] = {
         "D:\\dn3d_debug.log",
+        "E:\\test_xemu.log",
         NULL
     };
     for (int i = 0; log_paths[i] && xbox_log_fd < 0; i++)
