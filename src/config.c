@@ -89,6 +89,7 @@ int32 ScreenWidth = 640;
 int32 ScreenHeight = 480;
 int32 ScreenBPP = 8;
 #endif
+int32 EmuMode = 0;
 int32 ForceSetup = 1;
 
 #ifdef _XBOX
@@ -202,6 +203,26 @@ const char * CONFIG_AnalogNumToName( int32 func )
 ===================
 */
 
+#ifdef _XBOX
+void CONFIG_SetXboxJoystickTuning(void)
+{
+    int i;
+    for (i=0; i<MAXJOYAXES; i++) {
+        JoystickAnalogueDead[i] = 7000;
+        JoystickAnalogueSaturate[i] = 30000;
+        if (i <= 1)       JoystickAnalogueScale[i] = 20000;
+        else if (i == 2)  JoystickAnalogueScale[i] = 20000;
+        else if (i == 3)  JoystickAnalogueScale[i] = 16384;
+        else              JoystickAnalogueScale[i] = 65536;
+        CONTROL_SetAnalogAxisScale( i, JoystickAnalogueScale[i], controldevice_joystick );
+        CONTROL_SetJoyAxisDead(i, JoystickAnalogueDead[i]);
+        CONTROL_SetJoyAxisSaturate(i, JoystickAnalogueSaturate[i]);
+    }
+    RunMode = 0;
+    ud.mouseflip = 1;
+}
+#endif
+
 void CONFIG_SetDefaults( void )
 {
     int32 i;
@@ -279,14 +300,7 @@ void CONFIG_SetDefaults( void )
 
     for (i=0; i<MAXJOYAXES; i++) {
 #ifdef _XBOX
-        /* Xbox OG sticks need larger dead zones and lower sensitivity.
-         * Axis layout: 0=LX 1=LY 2=RX 3=RY 4=LTrig 5=RTrig */
-        JoystickAnalogueDead[i] = 7000;
-        JoystickAnalogueSaturate[i] = 30000;
-        if (i <= 1)       JoystickAnalogueScale[i] = 20000;  // Move/strafe: ~0.3x (walk speed)
-        else if (i == 2)  JoystickAnalogueScale[i] = 20000;  // Turn: ~0.3x
-        else if (i == 3)  JoystickAnalogueScale[i] = 16384;  // Look: 0.25x
-        else              JoystickAnalogueScale[i] = 65536;   // Triggers: 1x (digital use)
+        /* Applied below via CONFIG_SetXboxJoystickTuning() */
 #else
         JoystickAnalogueScale[i] = 65536;
         JoystickAnalogueDead[i] = 1024;
@@ -298,8 +312,7 @@ void CONFIG_SetDefaults( void )
     }
 
 #ifdef _XBOX
-    RunMode = 0;        // Walk by default, toggle with White button
-    ud.mouseflip = 1;   // Non-inverted Y: stick up = look up
+    CONFIG_SetXboxJoystickTuning();
 #endif
 }
 
@@ -706,6 +719,8 @@ int32 CONFIG_ReadSetup( void )
     SCRIPT_GetNumber( scripthandle, "Sound Setup", "ReverseStereo",&ReverseStereo);
     SCRIPT_GetString( scripthandle, "Sound Setup", "MusicParams", MusicParams, sizeof(MusicParams));
 
+    SCRIPT_GetNumber( scripthandle, "Misc", "EmuMode",&EmuMode);
+
     SCRIPT_GetNumber( scripthandle, "Controls","UseJoystick",&UseJoystick);
     SCRIPT_GetNumber( scripthandle, "Controls","UseMouse",&UseMouse);
     SCRIPT_GetNumber( scripthandle, "Controls","MouseAimingFlipped",&ud.mouseflip); // mouse aiming inverted
@@ -868,6 +883,8 @@ void CONFIG_WriteSetup( void )
     }
 
     SCRIPT_PutString( scripthandle, "Comm Setup","PlayerName",&myname[0]);
+
+    SCRIPT_PutNumber( scripthandle, "Misc", "EmuMode", EmuMode, false, false);
 
 #ifdef _XBOX
     SCRIPT_Save (scripthandle, setupwritepath);

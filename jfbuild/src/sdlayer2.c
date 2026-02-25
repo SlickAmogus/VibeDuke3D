@@ -1495,8 +1495,12 @@ int handleevents(void)
 #ifdef _XBOX
 	/* Yield CPU briefly so the SDL audio thread can run.
 	 * On single-core Xbox (and xemu), the audio callback thread may
-	 * starve if the main thread never sleeps. */
-	SDL_Delay(1);
+	 * starve if the main thread never sleeps.
+	 * Only enabled when EmuMode=1 in duke3d.cfg to avoid perf hit on real HW. */
+	{
+		extern int EmuMode;
+		if (EmuMode) SDL_Delay(1);
+	}
 #endif
 	int code, rv=0, j, control;
 	SDL_Event ev;

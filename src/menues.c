@@ -1863,6 +1863,8 @@ cheat_for_port_credits:
             menutext(c,67+16+16+16+16,SHX(-6),PHX(-6),"CREDITS");
 
             menutext(c,67+16+16+16+16+16,SHX(-7),PHX(-7),"QUIT");
+
+            gametextpal(160,67+16+16+16+16+16+24,"VibeDuke3D v1.0",8,1);
             break;
 
         case 50:
@@ -1953,6 +1955,8 @@ if (!VOLUMEALL) {
                 menutext(c,67+16+16+16+16+16   ,SHX(-7),1,"QUIT TO TITLE");
             else menutext(c,67+16+16+16+16+16   ,SHX(-7),PHX(-7),"QUIT TO TITLE");
             menutext(c,67+16+16+16+16+16+16,SHX(-8),PHX(-8),"QUIT GAME");
+
+            gametextpal(160,67+16+16+16+16+16+16+24,"VibeDuke3D v1.0",8,1);
             break;
 
         case 100:
@@ -2396,14 +2400,59 @@ if (!VOLUMEALL) {
         rotatesprite(320<<15,19<<16,65536L,0,MENUBAR,16,0,10,0,0,xdim-1,ydim-1);
         menutext(320>>1,24,0,0,"INPUT SETTINGS");
 
+#ifdef _XBOX
+        c = (200 - 18*4)>>1;
+
+        onbar = 0;
+        {
+            const int keys[] = {sc_K, sc_M, sc_C, sc_V, 0};
+            if (probey >= 3)
+                x = probekeys(160,c+9,18,4,keys);
+            else
+                x = probekeys(160,c,18,4,keys);
+        }
+
+        switch (x) {
+        case -1:
+            cmenu(200);
+            probey = 3;
+            break;
+
+        case 0:
+            currentlist = 0;
+            // fall through
+        case 1:
+        case 2:
+            if (x==2 && !CONTROL_JoyPresent) break;
+            cmenu(204+x);
+            break;
+
+        case 3:
+            CONFIG_SetDefaultKeyDefinitions(CONFIG_DEFAULTS_MODERN);
+            CONFIG_SetMouseDefaults(CONFIG_DEFAULTS_MODERN);
+            CONFIG_SetJoystickDefaults(2);
+            CONFIG_SetXboxJoystickTuning();
+            changesmade = 2;
+            break;
+        }
+
+        menutext(160,c,         0,0,"KEYS SETUP");
+        menutext(160,c+18,      0,0,"MOUSE SETUP");
+        menutext(160,c+18+18,   0,CONTROL_JoyPresent==0,"CONTROLLER SETUP");
+        menutext(160,c+18+18+18+9, 0,0,"VIBEDUKE DEFAULTS");
+        if (changesmade == 2)
+            gametext(160,158,"VibeDuke defaults applied",0,2+8+16);
+#else
         c = (200 - 18*5)>>1;
 
         onbar = 0;
-        const int keys[] = {sc_K, sc_M, sc_C, sc_U, sc_S, 0};
-        if (probey >= 3)
-            x = probekeys(160,c+9,18,5,keys);
-        else
-            x = probekeys(160,c,18,5,keys);
+        {
+            const int keys[] = {sc_K, sc_M, sc_C, sc_U, sc_S, 0};
+            if (probey >= 3)
+                x = probekeys(160,c+9,18,5,keys);
+            else
+                x = probekeys(160,c,18,5,keys);
+        }
 
         switch (x) {
         case -1:
@@ -2443,6 +2492,7 @@ if (!VOLUMEALL) {
             gametext(160,158,"Modern defaults applied",0,2+8+16);
         else if (changesmade == CONFIG_DEFAULTS_CLASSIC)
             gametext(160,158,"Classic defaults applied",0,2+8+16);
+#endif
         break;
 
     case 203:   // Video settings.

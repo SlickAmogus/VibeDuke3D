@@ -3,8 +3,8 @@
 
 Duke Nukem 3D port for the original Xbox, based on [JFDuke3D](http://www.jonof.id.au/jfduke3d) by Jonathon Fowler. Built using the [nxdk](https://github.com/XboxDev/nxdk) open-source Xbox development kit.
 
-This project was almost entirely vibe coded using Claude. We started from scratch, using just JFDuke3D as a base and NXDK as the guide. Claude acted as the developer while I designed and did QA. After about two or three days,
-this is the end result. A modern, fully functional, and playable port of Duke Nukem 3D for OG Xbox with nohthing cut.
+This project was almost entirely vibe coded using Claude. We used JFDuke3D as the base and NXDK to get it working on Xbox. Claude acted as the developer while I designed and did QA. After about two or three days,
+this is the end result. A modern, fully functional, and playable port of Duke Nukem 3D for OG Xbox with nothing cut.
 
 ## Features
 
@@ -31,10 +31,10 @@ Output: `bin/default.xbe`
 
 ## Game Data Setup
 
-You need a legitimate copy of Duke Nukem 3D. Place the following on your Xbox HDD in the same directory as `default.xbe`:
+You need a legitimate copy of Duke Nukem 3D or the shareware. Place the following on your Xbox HDD in the same directory as `default.xbe`:
 
 - `DUKE3D.GRP` — Main game data file
-- `music/` — OGG Vorbis music files (use `convert_midi_to_ogg.sh` to convert from MIDI). Please note they should be the same name as the MID file, only with OGG extension.
+- `music/` — (Optional) OGG Vorbis music files (use `convert_midi_to_ogg.sh` to convert from MIDI). Please note they should be the same name as the MID file, only with OGG extension.
 
 ## Directory Layout
 

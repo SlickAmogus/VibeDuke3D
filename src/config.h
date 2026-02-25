@@ -50,6 +50,7 @@ extern int32 ScreenDisplay;
 extern int32 ScreenWidth;
 extern int32 ScreenHeight;
 extern int32 ScreenBPP;
+extern int32 EmuMode;
 extern int32 ForceSetup;
 
 extern byte KeyboardKeys[NUMGAMEFUNCTIONS][2];
@@ -71,6 +72,9 @@ enum {
 void CONFIG_SetMouseDefaults(int style);
 void CONFIG_SetJoystickDefaults(int style);
 void CONFIG_SetDefaultKeyDefinitions(int style);
+#ifdef _XBOX
+void CONFIG_SetXboxJoystickTuning(void);
+#endif
 
 int32 CONFIG_ReadSetup( void );
 void CONFIG_GetSetupFilename( void );
