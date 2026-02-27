@@ -144,6 +144,12 @@ COMPAT_SRCS = \
 
 SRCS = $(COMPAT_SRCS) $(ENGINE_SRCS) $(GAME_SRCS) $(MACT_SRCS) $(AUDIO_SRCS)
 
+# --- Cg shaders (compiled to .inl by nxdk toolchain) -----------------------
+SHADER_OBJS = polymost_vs.inl polymost_ps.inl
+
+# Add project root to include path so glbuild_xbox.c can find compiled .inl files
+NXDK_CFLAGS += -I$(CURDIR)
+
 # OGG Vorbis: using stb_vorbis (included in vorbis.c), no external libs needed
 # /safeseh:no kept for any remaining mingw-style .o objects
 NXDK_LDFLAGS += /safeseh:no

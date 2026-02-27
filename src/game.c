@@ -8262,8 +8262,13 @@ int app_main(int argc, char const * const argv[])
                 ScreenWidth,ScreenHeight,ScreenBPP,ScreenMode?"fullscreen":"windowed",ScreenDisplay);
         ScreenMode = 0;
         ScreenDisplay = 0;
+#ifdef _XBOX
+        ScreenWidth = 320;
+        ScreenHeight = 240;
+#else
         ScreenWidth = 640;
         ScreenHeight = 480;
+#endif
         ScreenBPP = 8;
         setgamemode(SETGAMEMODE_FULLSCREEN(ScreenDisplay,ScreenMode),ScreenWidth,ScreenHeight,ScreenBPP);
     }

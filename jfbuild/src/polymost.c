@@ -2992,7 +2992,7 @@ void polymost_drawrooms (void)
 	{
 		resizeglcheck();
 
-		//glfunc.glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
+		glfunc.glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT);
 		glfunc.glEnable(GL_DEPTH_TEST);
 		glfunc.glDepthFunc(GL_ALWAYS); //NEVER,LESS,(,L)EQUAL,GREATER,(NOT,G)EQUAL,ALWAYS
 

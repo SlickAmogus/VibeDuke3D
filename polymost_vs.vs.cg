@@ -1,0 +1,32 @@
+// polymost_vs.vs.cg — NV2A vertex shader for POLYMOST
+// Profile: vp20 (NV2A vertex program)
+// MVP transform + texcoord passthrough + colour passthrough
+//
+// Constants allocated by Cg (starting at c[96]):
+//   c[96]-c[99]:  u_mvp (combined modelview*projection, 4x4)
+//   c[100]:       u_colour (vec4)
+
+struct vIn {
+    float4 pos  : POSITION;   // attribute slot 0
+    float2 tex  : TEXCOORD;   // attribute slot 9
+};
+
+struct vOut {
+    float4 pos  : POSITION;
+    float4 col  : COLOR;       // vertex colour → register combiner diffuse
+    float2 tex0 : TEXCOORD0;
+};
+
+vOut main(
+    vIn              I,
+    uniform float4x4 u_mvp,
+    uniform float4   u_colour
+    )
+{
+    vOut result;
+    result.pos  = mul(float4(I.pos.xyz, 1.0), u_mvp);
+    result.pos.xyz = result.pos.xyz / result.pos.w;
+    result.col  = u_colour;
+    result.tex0 = I.tex;
+    return result;
+}

@@ -1,0 +1,16 @@
+// polymost_ps.ps.cg — NV2A fragment shader for POLYMOST
+// Profile: fp20 (NV2A register combiners)
+// output = texture0 * vertex_colour (diffuse)
+//
+// Alpha test and fog are handled by NV2A fixed-function hardware registers,
+// not by the register combiners.
+
+struct vOut {
+    float4 col  : COLOR;
+    float2 tex0 : TEXCOORD0;
+};
+
+float4 main(vOut I, uniform sampler2D tex) : COLOR
+{
+    return tex2D(tex, I.tex0.xy) * I.col;
+}

@@ -31,6 +31,9 @@
 
 #ifdef _XBOX
 #include <hal/video.h>
+#include <pbkit/pbkit.h>
+extern int xbox_pbkit_initialized;
+extern void xbox_pbkit_init_for_polymost(void);
 #endif
 #if defined(__APPLE__)
 # include "osxbits.h"
@@ -954,48 +957,81 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 	fullsc = 0;  /* windowed — Xbox has no window manager, SDL handles display directly */
 
 	if (sdl_window && sdl_renderer) {
-		/* Window already exists — just recreate texture + framebuffer at new size. */
-		int i, j, pitch;
-
+		/* Window already exists — can't destroy and recreate on Xbox. */
 		if (baselayer_videomodewillchange) baselayer_videomodewillchange();
 
-		/* Free old texture and framebuffer */
-		if (sdl_texture) { SDL_DestroyTexture(sdl_texture); sdl_texture = NULL; }
-		if (frame) { free(frame); frame = NULL; }
+		if (bitspp > 8) {
+			/* Switching to polymost (32-bit): init GL shim + pbkit.
+			 * SDL renderer stays alive but pbkit takes over the framebuffer. */
+#if USE_OPENGL
+			if (glbuild_init()) {
+				buildputs("Xbox: glbuild_init failed for polymost\n");
+				return -1;
+			}
+			xbox_pbkit_init_for_polymost();
+#if USE_POLYMOST
+			polymost_glreset();
+#endif
+			frameplace = 0;
+			bytesperline = 0;
+			imageSize = 0;
+			numpages = 127;
 
-		/* New texture at the requested render resolution */
-		SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, xbox_bilinear ? "linear" : "nearest");
-		sdl_texture = SDL_CreateTexture(sdl_renderer,
-			B_LITTLE_ENDIAN ? SDL_PIXELFORMAT_ABGR8888 : SDL_PIXELFORMAT_RGBA8888,
-			SDL_TEXTUREACCESS_STREAMING, xdim, ydim);
-		xbox_log("Xbox: resize texture %dx%d -> %s\n", xdim, ydim,
-			sdl_texture ? "OK" : SDL_GetError());
-		if (!sdl_texture) {
-			buildprintf("XBOX: setvideomode(%d,%d,%d,%d) FAILED\n", xdim, ydim, bitspp, fullsc);
+			xres = xdim; yres = ydim; bpp = bitspp; fullscreen = fullsc;
+			videomodereset = 0;
+			OSD_ResizeDisplay(xres, yres);
+			if (baselayer_videomodedidchange) baselayer_videomodedidchange();
+			if (regrab) grabmouse(1);
+			xbox_log("XBOX: setvideomode polymost done: xdim=%d ydim=%d bpp=%d\n",
+				xdim, ydim, bpp);
+			return 0;
+#else
 			return -1;
+#endif
 		}
 
-		/* New framebuffer */
-		pitch = (((xdim|1) + 4) & ~3);
-		frame = (unsigned char *) malloc(pitch * ydim);
-		if (!frame) { buildputs("Unable to allocate framebuffer\n"); return -1; }
+		/* 8-bit: just recreate texture + framebuffer at new size. */
+		{
+			int i, j, pitch;
 
-		frameplace = (intptr_t) frame;
-		bytesperline = pitch;
-		imageSize = bytesperline * ydim;
-		numpages = 1;
-		setvlinebpl(bytesperline);
-		for (i = j = 0; i <= ydim; i++) { ylookup[i] = j; j += bytesperline; }
+			/* Free old texture and framebuffer */
+			if (sdl_texture) { SDL_DestroyTexture(sdl_texture); sdl_texture = NULL; }
+			if (frame) { free(frame); frame = NULL; }
 
-		xres = xdim; yres = ydim; bpp = bitspp; fullscreen = fullsc;
-		videomodereset = 0;
-		OSD_ResizeDisplay(xres, yres);
-		if (baselayer_videomodedidchange) baselayer_videomodedidchange();
-		if (regrab) grabmouse(1);
+			/* New texture at the requested render resolution */
+			SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, xbox_bilinear ? "linear" : "nearest");
+			sdl_texture = SDL_CreateTexture(sdl_renderer,
+				B_LITTLE_ENDIAN ? SDL_PIXELFORMAT_ABGR8888 : SDL_PIXELFORMAT_RGBA8888,
+				SDL_TEXTUREACCESS_STREAMING, xdim, ydim);
+			xbox_log("Xbox: resize texture %dx%d -> %s\n", xdim, ydim,
+				sdl_texture ? "OK" : SDL_GetError());
+			if (!sdl_texture) {
+				buildprintf("XBOX: setvideomode(%d,%d,%d,%d) FAILED\n", xdim, ydim, bitspp, fullsc);
+				return -1;
+			}
 
-		xbox_log("XBOX: setvideomode done: xdim=%d ydim=%d xres=%d yres=%d\n",
-			xdim, ydim, xres, yres);
-		return 0;
+			/* New framebuffer */
+			pitch = (((xdim|1) + 4) & ~3);
+			frame = (unsigned char *) malloc(pitch * ydim);
+			if (!frame) { buildputs("Unable to allocate framebuffer\n"); return -1; }
+
+			frameplace = (intptr_t) frame;
+			bytesperline = pitch;
+			imageSize = bytesperline * ydim;
+			numpages = 1;
+			setvlinebpl(bytesperline);
+			for (i = j = 0; i <= ydim; i++) { ylookup[i] = j; j += bytesperline; }
+
+			xres = xdim; yres = ydim; bpp = bitspp; fullscreen = fullsc;
+			videomodereset = 0;
+			OSD_ResizeDisplay(xres, yres);
+			if (baselayer_videomodedidchange) baselayer_videomodedidchange();
+			if (regrab) grabmouse(1);
+
+			xbox_log("XBOX: setvideomode done: xdim=%d ydim=%d xres=%d yres=%d\n",
+				xdim, ydim, xres, yres);
+			return 0;
+		}
 	}
 	/* First call — fall through to create window + renderer + texture */
 #else
@@ -1222,6 +1258,7 @@ int setvideomode(int xdim, int ydim, int bitspp, int fullsc)
 			shutdownvideo();
 			return -1;
 		}
+		xbox_pbkit_init_for_polymost();
 #else
 		sdl_glcontext = SDL_GL_CreateContext(sdl_window);
 		if (!sdl_glcontext) {
@@ -1329,10 +1366,27 @@ void showframe(void)
 #if USE_OPENGL
 	if (!glunavailable) {
 #ifdef _XBOX
-		// Xbox: GL shim has no real framebuffer swap.
 		// For 8-bit mode, fall through to SDL texture path below.
-		// For polymost (bpp>8), also fall through for now (no rendering yet).
-		if (bpp != 8) return;
+		// For polymost (bpp>8), swap the pbkit framebuffer.
+		if (bpp != 8) {
+			if (xbox_pbkit_initialized) {
+				static int sf_poly_count = 0;
+				if (sf_poly_count < 5) xbox_log("Xbox: showframe POLYMOST #%d enter\n", sf_poly_count);
+				// Wait for GPU to finish all draw commands
+				while (pb_busy()) { /* spin */ }
+				if (sf_poly_count < 5) xbox_log("Xbox: showframe pb_busy done\n");
+				// Signal frame-end to pbkit (triggers buffer swap at vblank).
+				// Do NOT call pb_reset/pb_target_back_buffer here — those are
+				// frame-start operations that must happen in glClear, right
+				// before the next frame's draws. This matches the mesh sample
+				// pattern where pb_wait_for_vbl/pb_reset/pb_target_back_buffer
+				// are at the TOP of the frame loop, and pb_finished is at the
+				// BOTTOM.
+				while (pb_finished()) { /* wait for flip */ }
+				if (sf_poly_count < 5) { xbox_log("Xbox: showframe pb_finished done\n"); sf_poly_count++; }
+			}
+			return;
+		}
 #else
 		if (bpp == 8) {
 			glbuild_update_8bit_frame(&gl8bit, frame, bytesperline, yres);
