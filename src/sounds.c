@@ -38,8 +38,8 @@ Modifications for JonoF's port by Jonathon Fowler (jf@jonof.id.au)
 #include <io.h>
 #include "fx_man.h"
 
-/* Per-level sound diagnostic log budget — reset on each enterlevel */
-int xbox_snd_log_budget = 200; /* TEMP: high budget to capture entrance voice — reduce after fix */
+/* Per-level sound diagnostic log budget — 0 for release (no per-sound logging) */
+int xbox_snd_log_budget = 0;
 
 /* Sounds that should always play from the center channel in 5.1 surround.
  * This includes Duke's voice lines (already handled by soundm & 4), plus
@@ -782,7 +782,8 @@ int xyzsound(short num,short i,int x,int y,int z)
     /* Boss footstep/roam rumble: scale with proximity, max half intensity */
     {
         extern int xbox_vibration;
-        if (xbox_vibration && (num == BOS1_WALK || num == BOS1_ROAM ||
+        if (xbox_vibration && ud.recstat != 2 &&
+            (num == BOS1_WALK || num == BOS1_ROAM ||
             num == BOS2_ROAM || num == BOS3_ROAM || num == BOS4_ROAM))
         {
             /* sndist range: ~6720 (closest) to ~31444 (max audible).
@@ -862,6 +863,17 @@ void sound(short num)
     if(VoiceToggle==0 && (soundm[num]&4) ) return;
     if( (soundm[num]&8) && ud.lockout ) return;
     if(FX_VoiceAvailable(soundpr[num]) == 0) return;
+
+    /* Stop any currently-playing Duke voice line before starting a new one.
+     * xyzsound() blocks new flag4 sounds; here we preempt instead so the
+     * newest contextual line (kill quip, pickup reaction) always plays. */
+    if( soundm[num]&4 )
+    {
+        short j;
+        for(j=0;j<NUM_SOUNDS;j++)
+            if( j != num && Sound[j].num > 0 && (soundm[j]&4) )
+                stopsound(j);
+    }
 
     pitchs = soundps[num];
     pitche = soundpe[num];

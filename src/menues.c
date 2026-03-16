@@ -2488,13 +2488,13 @@ if (!VOLUMEALL) {
             break;
 
         case 4:
-            CONFIG_SetJoystickDefaults(2);
-            CONFIG_SetXboxJoystickTuning();
-            changesmade = 2;
+            cmenu(223);
             break;
 
         case 5:
-            cmenu(223);
+            CONFIG_SetJoystickDefaults(2);
+            CONFIG_SetXboxJoystickTuning();
+            changesmade = 2;
             break;
         }
 
@@ -2532,11 +2532,11 @@ if (!VOLUMEALL) {
         gametextpal(40,c+20+20+20, "Vibration", 0, 2);
         gametextpal(170,c+20+20+20, xbox_vibration ? "On" : "Off", 0, 0);
 
-        /* Reset Defaults */
-        gametextpal(40,c+20+20+20+20, "Reset Defaults", 0, 2);
-
         /* Set Controls */
-        gametextpal(40,c+20+20+20+20+20, "Set Controls", 0, 2);
+        gametextpal(40,c+20+20+20+20, "Set Controls", 0, 2);
+
+        /* Reset Defaults */
+        gametextpal(40,c+20+20+20+20+20, "Reset Defaults", 0, 2);
 
         if (changesmade == 2)
             gametext(160,178,"Defaults applied",0,2+8+16);
@@ -3586,10 +3586,14 @@ if (!VOLUMEALL) {
     case 223: {
         /* "Set Controls" wizard — cycle through game functions,
          * asking the user to press a button for each one.
-         * Start = skip, Guide/L3/R3 ignored. */
+         * Start = cancel (restores previous mappings), Guide ignored. */
         static int sc_step = -1;   /* -1 = uninitialised */
         static int sc_prev_jb;
+        static int sc_prev_lt, sc_prev_rt; /* trigger edge detection */
         static int sc_done_frames;
+        /* Backup arrays for cancel/restore */
+        static int32 sc_backup_btns[MAXJOYBUTTONS];
+        static int32 sc_backup_lt, sc_backup_rt;
 
         /* Functions to map (ordered by importance) */
         static const int sc_funcs[] = {
@@ -3607,21 +3611,35 @@ if (!VOLUMEALL) {
             gamefunc_Map,
             gamefunc_Jetpack,
             gamefunc_MedKit,
+            gamefunc_See_Coop_View,
         };
         #define SC_NUM_FUNCS ((int)(sizeof(sc_funcs)/sizeof(sc_funcs[0])))
 
         /* --- Initialise on first entry --- */
         if (sc_step < 0) {
+            /* Backup current mappings for cancel/restore */
+            for (i = 0; i < MAXJOYBUTTONS; i++)
+                sc_backup_btns[i] = JoystickFunctions[i][0];
+            sc_backup_lt = JoystickDigitalFunctions[4][1];
+            sc_backup_rt = JoystickDigitalFunctions[5][1];
+
             /* Clear all button single-click mappings */
             for (i = 0; i < MAXJOYBUTTONS; i++) {
                 JoystickFunctions[i][0] = -1;
                 CONTROL_MapButton(-1, i, 0, controldevice_joystick);
             }
+            /* Clear trigger digital axis mappings too */
+            JoystickDigitalFunctions[4][1] = -1;
+            JoystickDigitalFunctions[5][1] = -1;
+            CONTROL_MapDigitalAxis(4, -1, 1, controldevice_joystick);
+            CONTROL_MapDigitalAxis(5, -1, 1, controldevice_joystick);
             /* Keep Start = Show_Menu always */
             JoystickFunctions[6][0] = gamefunc_Show_Menu;
             CONTROL_MapButton(gamefunc_Show_Menu, 6, 0, controldevice_joystick);
             sc_step = 0;
             sc_prev_jb = joyb;   /* ignore buttons held on entry */
+            sc_prev_lt = joyaxis[4];
+            sc_prev_rt = joyaxis[5];
             sc_done_frames = 0;
         }
 
@@ -3631,29 +3649,65 @@ if (!VOLUMEALL) {
 
         if (sc_step < SC_NUM_FUNCS) {
             /* Show current function */
-            strcpy(buf, CONFIG_FunctionNumToName(sc_funcs[sc_step]));
-            for (i = 0; buf[i]; i++) if (buf[i] == '_') buf[i] = ' ';
+            if (sc_funcs[sc_step] == gamefunc_See_Coop_View)
+                strcpy(buf, "THIRD PERSON");
+            else {
+                strcpy(buf, CONFIG_FunctionNumToName(sc_funcs[sc_step]));
+                for (i = 0; buf[i]; i++) if (buf[i] == '_') buf[i] = ' ';
+            }
 
             gametext(320>>1, 70, "PRESS A BUTTON FOR", 0, 2+8+16);
-            menutext(320>>1, 90, 0, 0, buf);
+            menutext(320>>1, 97, 0, 0, buf);
 
             sprintf(buf, "%d of %d", sc_step + 1, SC_NUM_FUNCS);
-            gametext(320>>1, 120, buf, 0, 2+8+16);
-            gametext(320>>1, 140, "START TO SKIP", 0, 2+8+16);
+            gametext(320>>1, 125, buf, 0, 2+8+16);
+            gametext(320>>1, 145, "PRESS START TO CANCEL", 0, 2+8+16);
 
             /* --- Detect new button press --- */
             {
                 int newly = joyb & ~sc_prev_jb;
                 int btn;
-                for (btn = 0; btn < 15 && newly; btn++) {
+                int handled = 0;
+
+                /* Check triggers first (axes 4=LT, 5=RT) */
+                #define SC_TRIG_THRESH 16000
+                if (!handled && joyaxis[4] > SC_TRIG_THRESH && sc_prev_lt <= SC_TRIG_THRESH) {
+                    /* Left trigger pulled */
+                    JoystickDigitalFunctions[4][1] = sc_funcs[sc_step];
+                    CONTROL_MapDigitalAxis(4, sc_funcs[sc_step], 1, controldevice_joystick);
+                    sound(PISTOL_BODYHIT);
+                    sc_step++;
+                    handled = 1;
+                }
+                if (!handled && joyaxis[5] > SC_TRIG_THRESH && sc_prev_rt <= SC_TRIG_THRESH) {
+                    /* Right trigger pulled */
+                    JoystickDigitalFunctions[5][1] = sc_funcs[sc_step];
+                    CONTROL_MapDigitalAxis(5, sc_funcs[sc_step], 1, controldevice_joystick);
+                    sound(PISTOL_BODYHIT);
+                    sc_step++;
+                    handled = 1;
+                }
+                #undef SC_TRIG_THRESH
+
+                /* Check buttons */
+                for (btn = 0; btn < 15 && newly && !handled; btn++) {
                     if (!(newly & (1 << btn))) continue;
-                    /* Skip Guide(5), LeftStick(7), RightStick(8) */
-                    if (btn == 5 || btn == 7 || btn == 8) continue;
+                    /* Skip Guide(5) only */
+                    if (btn == 5) continue;
 
                     if (btn == 6) {
-                        /* Start = skip this function */
+                        /* Start = cancel: restore all backed-up mappings */
+                        for (i = 0; i < MAXJOYBUTTONS; i++) {
+                            JoystickFunctions[i][0] = sc_backup_btns[i];
+                            CONTROL_MapButton(sc_backup_btns[i], i, 0, controldevice_joystick);
+                        }
+                        JoystickDigitalFunctions[4][1] = sc_backup_lt;
+                        JoystickDigitalFunctions[5][1] = sc_backup_rt;
+                        CONTROL_MapDigitalAxis(4, sc_backup_lt, 1, controldevice_joystick);
+                        CONTROL_MapDigitalAxis(5, sc_backup_rt, 1, controldevice_joystick);
                         sound(EXITMENUSOUND);
-                        sc_step++;
+                        sc_step = -1;
+                        cmenu(202);
                     } else {
                         /* Assign this button to the current function */
                         JoystickFunctions[btn][0] = sc_funcs[sc_step];
@@ -3662,15 +3716,21 @@ if (!VOLUMEALL) {
                         sound(PISTOL_BODYHIT);
                         sc_step++;
                     }
+                    handled = 1;
                     break;
                 }
             }
             sc_prev_jb = joyb;
+            sc_prev_lt = joyaxis[4];
+            sc_prev_rt = joyaxis[5];
         } else {
             /* All functions done — show confirmation briefly */
             gametext(320>>1, 90, "CONTROLS SAVED!", 0, 2+8+16);
             sc_done_frames++;
             if (sc_done_frames > 60) {   /* ~1 second */
+                /* Ensure Start = Show_Menu is always preserved */
+                JoystickFunctions[6][0] = gamefunc_Show_Menu;
+                CONTROL_MapButton(gamefunc_Show_Menu, 6, 0, controldevice_joystick);
                 CONFIG_WriteSetup();
                 sc_step = -1;
                 cmenu(202);
@@ -4079,31 +4139,51 @@ VOLUME_ALL_40x:
                     break;
                 case 401:
                     rotatesprite(160<<16,200<<15,65536L,0,MENUSCREEN,0,0,10+64,0,0,xdim-1,ydim-1);
-                    menutext(160,24,0,0,"XBOX CONTROLS");
+                    menutext(160,24,0,0,"CONTROLS");
+                    {
+                        char fn[64];
+                        int fc;
+                        #define _BNAME(idx) do { \
+                            fc = JoystickFunctions[idx][0]; \
+                            if (fc == gamefunc_See_Coop_View) strcpy(fn,"Third Person"); \
+                            else if (fc >= 0) { int _j; strcpy(fn,CONFIG_FunctionNumToName(fc)); \
+                                for(_j=0;fn[_j];_j++) if(fn[_j]=='_') fn[_j]=' '; } \
+                            else strcpy(fn,"---"); \
+                        } while(0)
+                        #define _ANAME(ax,dr) do { \
+                            fc = JoystickDigitalFunctions[ax][dr]; \
+                            if (fc == gamefunc_See_Coop_View) strcpy(fn,"Third Person"); \
+                            else if (fc >= 0) { int _j; strcpy(fn,CONFIG_FunctionNumToName(fc)); \
+                                for(_j=0;fn[_j];_j++) if(fn[_j]=='_') fn[_j]=' '; } \
+                            else strcpy(fn,"---"); \
+                        } while(0)
 
-                    gametext(160,36, "BUTTONS",0,2+8+16);
-                    minitext(160-60,36+10, "A = Jump",            0, 10+16+128);
-                    minitext(160-60,36+17, "B = Use Inventory",   0, 10+16+128);
-                    minitext(160-60,36+24, "X = Open / Activate", 0, 10+16+128);
-                    minitext(160-60,36+31, "Y = Crouch",          0, 10+16+128);
-                    minitext(160-60,36+38, "Start = Menu",        0, 10+16+128);
-                    minitext(160-60,36+45, "Back = Map",          0, 10+16+128);
+                        gametext(160,36, "BUTTONS",0,2+8+16);
+                        _BNAME(0); sprintf(buf,"A = %s",fn); minitext(160-60,36+10,buf,0,10+16+128);
+                        _BNAME(1); sprintf(buf,"B = %s",fn); minitext(160-60,36+17,buf,0,10+16+128);
+                        _BNAME(2); sprintf(buf,"X = %s",fn); minitext(160-60,36+24,buf,0,10+16+128);
+                        _BNAME(3); sprintf(buf,"Y = %s",fn); minitext(160-60,36+31,buf,0,10+16+128);
+                        minitext(160-60,36+38, "Start = Menu", 0, 10+16+128);
+                        _BNAME(4); sprintf(buf,"Back = %s",fn); minitext(160-60,36+45,buf,0,10+16+128);
 
-                    gametext(160,88, "STICKS & TRIGGERS",0,2+8+16);
-                    minitext(160-60,88+10, "Left Stick = Move / Strafe",  0, 10+16+128);
-                    minitext(160-60,88+17, "Right Stick = Turn / Look",   0, 10+16+128);
-                    minitext(160-60,88+24, "L Stick Click = Quick Kick",  0, 10+16+128);
-                    minitext(160-60,88+31, "R Stick Click = Third Person", 0, 10+16+128);
-                    minitext(160-60,88+38, "Left Trigger = Walk",          0, 10+16+128);
-                    minitext(160-60,88+45, "Right Trigger = Fire",        0, 10+16+128);
+                        gametext(160,88, "STICKS & TRIGGERS",0,2+8+16);
+                        minitext(160-60,88+10, "Left Stick = Move / Strafe", 0, 10+16+128);
+                        minitext(160-60,88+17, "Right Stick = Turn / Look",  0, 10+16+128);
+                        _BNAME(7); sprintf(buf,"L Stick Click = %s",fn); minitext(160-60,88+24,buf,0,10+16+128);
+                        _BNAME(8); sprintf(buf,"R Stick Click = %s",fn); minitext(160-60,88+31,buf,0,10+16+128);
+                        _ANAME(4,1); sprintf(buf,"Left Trigger = %s",fn); minitext(160-60,88+38,buf,0,10+16+128);
+                        _ANAME(5,1); sprintf(buf,"Right Trigger = %s",fn); minitext(160-60,88+45,buf,0,10+16+128);
 
-                    gametext(160,140, "SHOULDERS & D-PAD",0,2+8+16);
-                    minitext(160-60,140+10, "White = Prev Weapon",    0, 10+16+128);
-                    minitext(160-60,140+17, "Black = Next Weapon",    0, 10+16+128);
-                    minitext(160-60,140+24, "D-Up = Jetpack",         0, 10+16+128);
-                    minitext(160-60,140+31, "D-Down = MedKit",        0, 10+16+128);
-                    minitext(160-60,140+38, "D-Left = Inventory Left",  0, 10+16+128);
-                    minitext(160-60,140+45, "D-Right = Inventory Right", 0, 10+16+128);
+                        gametext(160,140, "SHOULDERS & D-PAD",0,2+8+16);
+                        _BNAME(9);  sprintf(buf,"White = %s",fn); minitext(160-60,140+10,buf,0,10+16+128);
+                        _BNAME(10); sprintf(buf,"Black = %s",fn); minitext(160-60,140+17,buf,0,10+16+128);
+                        _BNAME(11); sprintf(buf,"D-Up = %s",fn); minitext(160-60,140+24,buf,0,10+16+128);
+                        _BNAME(12); sprintf(buf,"D-Down = %s",fn); minitext(160-60,140+31,buf,0,10+16+128);
+                        _BNAME(13); sprintf(buf,"D-Left = %s",fn); minitext(160-60,140+38,buf,0,10+16+128);
+                        _BNAME(14); sprintf(buf,"D-Right = %s",fn); minitext(160-60,140+45,buf,0,10+16+128);
+                        #undef _BNAME
+                        #undef _ANAME
+                    }
                     break;
             }
 

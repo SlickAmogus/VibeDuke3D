@@ -2508,31 +2508,51 @@ void displayrest(int smoothratio)
             case 2:
 #ifdef _XBOX
                 rotatesprite(160<<16,200<<15,65536L,0,MENUSCREEN,0,0,10+64,0,0,xdim-1,ydim-1);
-                menutext(160,24,0,0,"XBOX CONTROLS");
+                menutext(160,24,0,0,"CONTROLS");
+                {
+                    char buf[128], fn[64];
+                    int fc;
+                    #define _BNAME(idx) do { \
+                        fc = JoystickFunctions[idx][0]; \
+                        if (fc == gamefunc_See_Coop_View) strcpy(fn,"Third Person"); \
+                        else if (fc >= 0) { int _j; strcpy(fn,CONFIG_FunctionNumToName(fc)); \
+                            for(_j=0;fn[_j];_j++) if(fn[_j]=='_') fn[_j]=' '; } \
+                        else strcpy(fn,"---"); \
+                    } while(0)
+                    #define _ANAME(ax,dr) do { \
+                        fc = JoystickDigitalFunctions[ax][dr]; \
+                        if (fc == gamefunc_See_Coop_View) strcpy(fn,"Third Person"); \
+                        else if (fc >= 0) { int _j; strcpy(fn,CONFIG_FunctionNumToName(fc)); \
+                            for(_j=0;fn[_j];_j++) if(fn[_j]=='_') fn[_j]=' '; } \
+                        else strcpy(fn,"---"); \
+                    } while(0)
 
-                gametext(160,36, "BUTTONS",0,2+8+16);
-                minitext(160-60,36+10, "A = Jump",            0, 10+16+128);
-                minitext(160-60,36+17, "B = Use Inventory",   0, 10+16+128);
-                minitext(160-60,36+24, "X = Open / Activate", 0, 10+16+128);
-                minitext(160-60,36+31, "Y = Crouch",          0, 10+16+128);
-                minitext(160-60,36+38, "Start = Menu",        0, 10+16+128);
-                minitext(160-60,36+45, "Back = Map",          0, 10+16+128);
+                    gametext(160,36, "BUTTONS",0,2+8+16);
+                    _BNAME(0); sprintf(buf,"A = %s",fn); minitext(160-60,36+10,buf,0,10+16+128);
+                    _BNAME(1); sprintf(buf,"B = %s",fn); minitext(160-60,36+17,buf,0,10+16+128);
+                    _BNAME(2); sprintf(buf,"X = %s",fn); minitext(160-60,36+24,buf,0,10+16+128);
+                    _BNAME(3); sprintf(buf,"Y = %s",fn); minitext(160-60,36+31,buf,0,10+16+128);
+                    minitext(160-60,36+38, "Start = Menu", 0, 10+16+128);
+                    _BNAME(4); sprintf(buf,"Back = %s",fn); minitext(160-60,36+45,buf,0,10+16+128);
 
-                gametext(160,88, "STICKS & TRIGGERS",0,2+8+16);
-                minitext(160-60,88+10, "Left Stick = Move / Strafe",  0, 10+16+128);
-                minitext(160-60,88+17, "Right Stick = Turn / Look",   0, 10+16+128);
-                minitext(160-60,88+24, "L Stick Click = Quick Kick",  0, 10+16+128);
-                minitext(160-60,88+31, "R Stick Click = Third Person", 0, 10+16+128);
-                minitext(160-60,88+38, "Left Trigger = Walk",          0, 10+16+128);
-                minitext(160-60,88+45, "Right Trigger = Fire",        0, 10+16+128);
+                    gametext(160,88, "STICKS & TRIGGERS",0,2+8+16);
+                    minitext(160-60,88+10, "Left Stick = Move / Strafe", 0, 10+16+128);
+                    minitext(160-60,88+17, "Right Stick = Turn / Look",  0, 10+16+128);
+                    _BNAME(7); sprintf(buf,"L Stick Click = %s",fn); minitext(160-60,88+24,buf,0,10+16+128);
+                    _BNAME(8); sprintf(buf,"R Stick Click = %s",fn); minitext(160-60,88+31,buf,0,10+16+128);
+                    _ANAME(4,1); sprintf(buf,"Left Trigger = %s",fn); minitext(160-60,88+38,buf,0,10+16+128);
+                    _ANAME(5,1); sprintf(buf,"Right Trigger = %s",fn); minitext(160-60,88+45,buf,0,10+16+128);
 
-                gametext(160,140, "SHOULDERS & D-PAD",0,2+8+16);
-                minitext(160-60,140+10, "White = Prev Weapon",    0, 10+16+128);
-                minitext(160-60,140+17, "Black = Next Weapon",    0, 10+16+128);
-                minitext(160-60,140+24, "D-Up = Jetpack",         0, 10+16+128);
-                minitext(160-60,140+31, "D-Down = MedKit",        0, 10+16+128);
-                minitext(160-60,140+38, "D-Left = Inventory Left",  0, 10+16+128);
-                minitext(160-60,140+45, "D-Right = Inventory Right", 0, 10+16+128);
+                    gametext(160,140, "SHOULDERS & D-PAD",0,2+8+16);
+                    _BNAME(9);  sprintf(buf,"White = %s",fn); minitext(160-60,140+10,buf,0,10+16+128);
+                    _BNAME(10); sprintf(buf,"Black = %s",fn); minitext(160-60,140+17,buf,0,10+16+128);
+                    _BNAME(11); sprintf(buf,"D-Up = %s",fn); minitext(160-60,140+24,buf,0,10+16+128);
+                    _BNAME(12); sprintf(buf,"D-Down = %s",fn); minitext(160-60,140+31,buf,0,10+16+128);
+                    _BNAME(13); sprintf(buf,"D-Left = %s",fn); minitext(160-60,140+38,buf,0,10+16+128);
+                    _BNAME(14); sprintf(buf,"D-Right = %s",fn); minitext(160-60,140+45,buf,0,10+16+128);
+                    #undef _BNAME
+                    #undef _ANAME
+                }
 #else
                 rotatesprite(0,0,65536L,0,F1HELP,0,0,10+16+64, 0,0,xdim-1,ydim-1);
 #endif
@@ -2687,7 +2707,15 @@ void displayrest(int smoothratio)
         // look angles. The correction is: delta = (h-100) * gyxscale * 200 / (8 * ydimen)
         // in virtual pixels, computed here in 16.16 fixed point via scale().
         int dhoriz = ps[myconnectindex].horiz + ps[myconnectindex].horizoff - 100;
-        long crosshair_y = (100L<<16) + scale(dhoriz * 29, xdimenscale, 2 * ydimen);
+        int abs_dh = dhoriz < 0 ? -dhoriz : dhoriz;
+        /* Asymmetric non-linear correction: looking up needs more
+         * correction than down. Mid-range boost via (100-|dh|) term. */
+        long corr;
+        if (dhoriz > 0) /* looking up: ~20-40px more at extremes */
+            corr = dhoriz * 55 + dhoriz * (100 - abs_dh) / 4;
+        else             /* looking down: ~20px more at extremes */
+            corr = dhoriz * 50 + dhoriz * (100 - abs_dh) / 4;
+        long crosshair_y = (100L<<16) + scale(corr, xdimenscale, 2 * ydimen);
         rotatesprite((160-(ps[myconnectindex].look_ang>>1))<<16,crosshair_y,65536L,0,CROSSHAIR,0,0,2+1,windowx1,windowy1,windowx2,windowy2);
     }
 

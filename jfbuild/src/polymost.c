@@ -913,6 +913,14 @@ static void polymost_drawaux_glcall(GLenum mode, struct polymostdrawauxcall *dra
 
 	glfunc.glUniformMatrix4fv(polymostauxglsl.uniform_projection, 1, GL_FALSE, &gorthoprojmat[0][0]);
 
+#ifdef _XBOX
+	/* Xbox NV2A always multiplies modelview × projection in the vertex shader.
+	 * The aux GLSL shader on desktop only uses u_projection (no modelview),
+	 * so reset modelview to identity here to prevent the last 3D camera
+	 * transform from distorting 2D overlays (palfade, text, HUD sprites). */
+	glfunc.glUniformMatrix4fv(polymostglsl.uniform_modelview, 1, GL_FALSE, &gidentitymat[0][0]);
+#endif
+
 	glfunc.glUniform1f(polymostauxglsl.uniform_gamma, usegammabrightness == 1 ? curgamma : 1.0);
 
 	glfunc.glDrawElements(mode, draw->indexcount, GL_UNSIGNED_SHORT, 0);
@@ -934,6 +942,7 @@ static void polymost_palfade(void)
 	if (palfadedelta == 0) return;
 
 	draw.mode = 2;	// Solid colour.
+	draw.texture0 = nulltexture;	// Xbox: combiners always sample texture
 
 	draw.colour.r = palfadergb.r / 255.f;
 	draw.colour.g = palfadergb.g / 255.f;

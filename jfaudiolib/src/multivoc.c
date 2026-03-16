@@ -1574,11 +1574,13 @@ VoiceNode *MV_AllocVoice
    LL_Remove( voice, next, prev );
    RestoreInterrupts( flags );
 
-   // Find a free voice handle
+   // Find a free voice handle — wrap at a bounded range to avoid
+   // unbounded growth (handle reached 43000+ in long play sessions)
    do
       {
       MV_VoiceHandle++;
-      if ( MV_VoiceHandle < MV_MinVoiceHandle )
+      if ( MV_VoiceHandle < MV_MinVoiceHandle ||
+           MV_VoiceHandle > MV_MinVoiceHandle + MV_MaxVoices * 64 )
          {
          MV_VoiceHandle = MV_MinVoiceHandle;
          }

@@ -714,6 +714,13 @@ int32 CONFIG_ReadSetup( void )
 
 #if USE_POLYMOST && USE_OPENGL
     SCRIPT_GetNumber( scripthandle, "Screen Setup", "GLTextureMode", &gltexfiltermode);
+#ifdef _XBOX
+    {
+        extern int xbox_bilinear;
+        /* Sync SDL2 framebuffer filter with polymost texture filter */
+        xbox_bilinear = (gltexfiltermode > 0) ? 1 : 0;
+    }
+#endif
     SCRIPT_GetNumber( scripthandle, "Screen Setup", "GLAnisotropy", &glanisotropy);
     SCRIPT_GetNumber( scripthandle, "Screen Setup", "GLMultisample", &glmultisample);
     SCRIPT_GetNumber( scripthandle, "Screen Setup", "GLMultisampleNvidia", &glnvmultisamplehint);

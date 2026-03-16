@@ -126,6 +126,7 @@ static struct xbox_texture {
 } texture_table[MAX_TEXTURES];
 static int total_texture_bytes = 0;  // total contiguous memory allocated for textures
 static int xbox_tex_alloc_failed = 0;  // set when MmAllocateContiguous fails (signals precache to stop)
+static int xbox_tex_alloc_fail_count = 0;  // throttle alloc failure logging per level
 #define TEX_BUDGET_BYTES (8 * 1024 * 1024)  // proactive eviction threshold
 
 // Free list for recycling texture IDs deleted via glDeleteTextures.
@@ -1028,12 +1029,11 @@ static void APIENTRY xbox_glTexImage2D(GLenum target, GLint level, GLint ifmt,
 					evicted, aw, ah, alloc_size, tex->addr, total_texture_bytes);
 			}
 			if (!tex->addr) {
-				/* Only log first few alloc failures to avoid flooding during precache */
-				static int alloc_fail_count = 0;
-				if (alloc_fail_count < 3)
+				/* Only log first few alloc failures per level to avoid flooding */
+				if (xbox_tex_alloc_fail_count < 3)
 					xbox_log("Xbox: tex alloc FAILED %dx%d (%d bytes) total=%d\n",
 						aw, ah, alloc_size, total_texture_bytes);
-				alloc_fail_count++;
+				xbox_tex_alloc_fail_count++;
 				xbox_tex_alloc_failed = 1;
 				return;
 			}
@@ -2673,6 +2673,15 @@ int xbox_gl_texture_valid(unsigned int glpic)
 int xbox_tex_over_budget(void)
 {
 	return (total_texture_bytes >= TEX_BUDGET_BYTES) || xbox_tex_alloc_failed;
+}
+
+/* Reset per-level texture allocation state so precache starts fresh.
+ * Without this, a single alloc failure permanently poisons the budget
+ * check, collapsing precache to 1 texture for all subsequent levels. */
+void xbox_tex_reset_level_state(void)
+{
+	xbox_tex_alloc_failed = 0;
+	xbox_tex_alloc_fail_count = 0;
 }
 
 // Shut down pbkit and release all GPU resources.

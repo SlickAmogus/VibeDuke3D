@@ -368,6 +368,11 @@ void cacheit(void)
 #ifdef _XBOX
         buildprintf("cacheit: precache start, totalclock=%d\n", totalclock);
         xbox_log("cacheit: precache start\n");
+        /* Reset per-level alloc failure state so budget check starts fresh.
+         * Without this, a single alloc failure poisons all subsequent levels. */
+        { extern void xbox_tex_reset_level_state(void);
+          xbox_tex_reset_level_state();
+        }
 #endif
         firstclock = lastclock = totalclock;
         while (polymost_precache_run(&done, &total)) {
@@ -1716,11 +1721,7 @@ int enterlevel(unsigned char g)
 
     if(ud.recstat != 2) stopmusic();
 
-#ifdef _XBOX
-    { extern int xbox_snd_log_budget;
-      xbox_snd_log_budget = 30;  /* refresh sound diagnostic logging for this level */
-    }
-#endif
+    /* xbox_snd_log_budget: leave at 0 for release — set >0 to re-enable sound diagnostics */
 
     // Load music BEFORE precaching textures — music needs 2-5MB of heap,
     // and texture precaching consumes physical pages that starve malloc.

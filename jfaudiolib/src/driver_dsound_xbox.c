@@ -578,6 +578,17 @@ static void PumpAudio(void)
         writeBytes = DS_BUFFER_SIZE - DSWriteCursor + playCursor;
     }
 
+    /* Underrun recovery: if we need to fill more than 75% of the buffer,
+     * the play cursor has likely lapped our write cursor during a long
+     * stall (e.g. tile preloading, texture eviction, level load).  The
+     * circular-distance formula can't distinguish "100 bytes ahead" from
+     * "one full lap + 100 bytes ahead," so reset to the DirectSound write
+     * cursor and fill a modest amount to resume cleanly. */
+    if (writeBytes > DS_BUFFER_SIZE * 3 / 4) {
+        DSWriteCursor = writeCursor;
+        writeBytes = DS_BUFFER_SIZE / 4;
+    }
+
     if (writeBytes < 1024) return;
     writeBytes -= 512;
 
@@ -616,11 +627,11 @@ static void PumpAudio(void)
     if (fptr1 && fbytes1) BassBoostBuffer(fptr1, fbytes1);
     if (fptr2 && fbytes2) BassBoostBuffer(fptr2, fbytes2);
 
-    /* Upmix stereo front to surround (Hafler L-R difference extraction) */
-    if (surround) {
-        if (fptr1 && sptr1 && fbytes1) UpmixStereoToSurround(fptr1, sptr1, fbytes1);
-        if (fptr2 && sptr2 && fbytes2) UpmixStereoToSurround(fptr2, sptr2, fbytes2);
-    }
+    /* NOTE: Hafler upmix removed — it was extracting L-R differences
+     * from the entire front buffer (SFX+music), causing positional SFX
+     * (e.g. gunfire panned front-left) to leak into rear speakers.
+     * The engine's native surround mixer (MV_SurroundMixBuf) already
+     * handles rear-channel placement for positional SFX correctly. */
 
     /* Boost volume on all buffers */
     if (fptr1 && fbytes1) AmplifyBuffer(fptr1, fbytes1);

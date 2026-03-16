@@ -93,7 +93,7 @@ void incur_damage( struct player_struct *p )
         sprite[p->i].extra = p->last_extra + damage;
 
 #ifdef _XBOX
-        if (xbox_vibration) {
+        if (xbox_vibration && ud.recstat != 2) {
             int d = -damage;
             int intensity = d * 2000;
             if (intensity > 65535) intensity = 65535;
@@ -116,7 +116,7 @@ void quickkill(struct player_struct *p)
     sprite[p->i].cstat |= 32768;
     if(ud.god == 0) guts(&sprite[p->i],JIBS6,8,myconnectindex);
 #ifdef _XBOX
-    if (xbox_vibration) joyRumble(65535, 65535, 500);
+    if (xbox_vibration && ud.recstat != 2) joyRumble(65535, 65535, 500);
 #endif
     return;
 }
@@ -2485,7 +2485,7 @@ void processinput(short snum)
             if(ud.recstat == 1) closedemowrite();
             sound(PIPEBOMB_EXPLODE);
 #ifdef _XBOX
-            if (xbox_vibration) joyRumble(65535, 65535, 600);
+            if (xbox_vibration && ud.recstat != 2) joyRumble(65535, 65535, 600);
 #endif
             p->pals[0] = 64;
             p->pals[1] = 64;
@@ -2598,7 +2598,7 @@ void processinput(short snum)
         if(p->dead_flag == 0)
         {
 #ifdef _XBOX
-            if (xbox_vibration) joyRumble(65535, 65535, 500);
+            if (xbox_vibration && ud.recstat != 2) joyRumble(65535, 65535, 500);
 #endif
             if(s->pal != 1)
             {
