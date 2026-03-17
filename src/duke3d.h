@@ -408,6 +408,10 @@ struct player_struct
     unsigned char return_to_center;
 
     int max_secret_rooms,secret_rooms,max_actors_killed,actors_killed;
+
+#ifdef _XBOX
+    unsigned char can_double_jump; // 1 = mid-air jump available
+#endif
 };
 
 extern unsigned char tempbuf[2048];

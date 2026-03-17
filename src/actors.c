@@ -1807,7 +1807,18 @@ void movestandables(void)
 
                 x = s->extra;
                 spawn(i,EXPLOSION2);
+#ifdef _XBOX
+                { extern int xbox_stronger_pipebombs;
+                  if (xbox_stronger_pipebombs) {
+                    int r = pipebombblastradius * 3 / 2;
+                    int d = x * 5 / 4;
+                    hitradius( i, r, d>>2, d-(d>>1), d-(d>>2), d);
+                  } else
+#endif
                 hitradius( i, pipebombblastradius,x>>2, x-(x>>1),x-(x>>2), x);
+#ifdef _XBOX
+                }
+#endif
                 spritesound(PIPEBOMB_EXPLODE,i);
 
                 goto DETONATE;
@@ -3988,6 +3999,14 @@ void moveactors(void)
                             case BOUNCEMINE: m = bouncemineblastradius;break;
                         }
 
+#ifdef _XBOX
+                        { extern int xbox_stronger_pipebombs;
+                          if (xbox_stronger_pipebombs && s->picnum == HEAVYHBOMB) {
+                            m = m * 3 / 2;
+                            x = x * 5 / 4;
+                          }
+                        }
+#endif
                         hitradius( i, m,x>>2,x>>1,x-(x>>2),x);
                         spawn(i,EXPLOSION2);
                         if( s->zvel == 0 )

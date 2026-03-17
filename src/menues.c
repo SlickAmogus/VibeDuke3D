@@ -3764,26 +3764,61 @@ if (!VOLUMEALL) {
     case 224: {
         /* Extra Options submenu (replaces Parental Lock on Xbox) */
         extern int xbox_bloody_mess;
+        extern int xbox_stronger_pipebombs;
+        extern int xbox_hardcore_mode;
+        extern int xbox_double_jump;
 
         rotatesprite(320<<15,19<<16,65536L,0,MENUBAR,16,0,10,0,0,xdim-1,ydim-1);
         menutext(320>>1,24,0,0,"EXTRA OPTIONS");
 
         c = 50;
         onbar = 0;
-        x = probe(24,c,20,1);
+        x = probe(24,c,20,4);
 
         switch (x) {
         case -1:
             cmenu(200);
             probey = 4;
+            CONFIG_WriteSetup();
             break;
         case 0:
             xbox_bloody_mess = 1 - xbox_bloody_mess;
+            break;
+        case 1:
+            xbox_stronger_pipebombs = 1 - xbox_stronger_pipebombs;
+            break;
+        case 2:
+            xbox_hardcore_mode = 1 - xbox_hardcore_mode;
+            break;
+        case 3:
+            xbox_double_jump = 1 - xbox_double_jump;
             break;
         }
 
         gametextpal(40,c, "Bloody Mess", 0, 2);
         gametextpal(170,c, xbox_bloody_mess ? "On" : "Off", 0, 0);
+        c += 20;
+        gametextpal(40,c, "Stronger Pipebombs", 0, 2);
+        gametextpal(170,c, xbox_stronger_pipebombs ? "On" : "Off", 0, 0);
+        c += 20;
+        gametextpal(40,c, "Hardcore", 0, 2);
+        gametextpal(170,c, xbox_hardcore_mode ? "On" : "Off", 0, 0);
+        c += 20;
+        gametextpal(40,c, "Double Jump", 0, 2);
+        gametextpal(170,c, xbox_double_jump ? "On" : "Off", 0, 0);
+
+        /* Description text at bottom */
+        {
+            const char *desc = NULL;
+            switch (probey) {
+            case 0: desc = "Enemies always gib."; break;
+            case 1: desc = "1.5x blast radius, 1.25x damage."; break;
+            case 2: desc = "Always start with only a pistol."; break;
+            case 3: desc = "Press jump again mid-air."; break;
+            }
+            if (desc)
+                gametextpal(160-(Bstrlen(desc)<<1), 158, desc, 0, 0);
+        }
         break;
     }
 #endif

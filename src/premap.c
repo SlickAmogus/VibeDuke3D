@@ -710,6 +710,9 @@ void resetplayerstats(short snum)
     p->newowner          =-1;
     p->jumping_counter   = 0;
     p->hard_landing      = 0;
+#ifdef _XBOX
+    p->can_double_jump   = 0;
+#endif
     p->posxv             = 0;
     p->posyv             = 0;
     p->poszv             = 0;
@@ -832,7 +835,14 @@ void resetprestat(short snum,unsigned char g)
     numinterpolations = 0;
     startofdynamicinterpolations = 0;
 
-    if( ( (g&MODE_EOL) != MODE_EOL && numplayers < 2) || (ud.coop != 1 && numplayers > 1) )
+{
+#ifdef _XBOX
+    extern int xbox_hardcore_mode;
+    int force_reset = xbox_hardcore_mode;
+#else
+    int force_reset = 0;
+#endif
+    if( force_reset || ( (g&MODE_EOL) != MODE_EOL && numplayers < 2) || (ud.coop != 1 && numplayers > 1) )
     {
         resetweapons(snum);
         resetinventory(snum);
@@ -842,6 +852,7 @@ void resetprestat(short snum,unsigned char g)
         p->ammo_amount[HANDBOMB_WEAPON]++;
         p->curr_weapon = HANDBOMB_WEAPON;
     }
+}
 
     p->timebeforeexit   = 0;
     p->customexitsound  = 0;

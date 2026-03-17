@@ -699,12 +699,24 @@ int32 CONFIG_ReadSetup( void )
     {
         extern int xbox_vibration;
         extern int xbox_bloody_mess;
+        extern int xbox_stronger_pipebombs;
+        extern int xbox_hardcore_mode;
+        extern int xbox_double_jump;
         int32 vib = xbox_vibration;
         int32 bm = xbox_bloody_mess;
+        int32 sp = xbox_stronger_pipebombs;
+        int32 hc = xbox_hardcore_mode;
+        int32 dj = xbox_double_jump;
         SCRIPT_GetNumber( scripthandle, "Misc", "XboxVibration", &vib);
         SCRIPT_GetNumber( scripthandle, "Misc", "XboxBloodyMess", &bm);
+        SCRIPT_GetNumber( scripthandle, "Misc", "XboxStrongerPipebombs", &sp);
+        SCRIPT_GetNumber( scripthandle, "Misc", "XboxHardcoreMode", &hc);
+        SCRIPT_GetNumber( scripthandle, "Misc", "XboxDoubleJump", &dj);
         xbox_vibration = vib;
         xbox_bloody_mess = bm;
+        xbox_stronger_pipebombs = sp;
+        xbox_hardcore_mode = hc;
+        xbox_double_jump = dj;
     }
 #endif
 
@@ -820,8 +832,14 @@ void CONFIG_WriteSetup( void )
     {
         extern int xbox_vibration;
         extern int xbox_bloody_mess;
+        extern int xbox_stronger_pipebombs;
+        extern int xbox_hardcore_mode;
+        extern int xbox_double_jump;
         SCRIPT_PutNumber( scripthandle, "Misc", "XboxVibration",xbox_vibration,false,false);
         SCRIPT_PutNumber( scripthandle, "Misc", "XboxBloodyMess",xbox_bloody_mess,false,false);
+        SCRIPT_PutNumber( scripthandle, "Misc", "XboxStrongerPipebombs",xbox_stronger_pipebombs,false,false);
+        SCRIPT_PutNumber( scripthandle, "Misc", "XboxHardcoreMode",xbox_hardcore_mode,false,false);
+        SCRIPT_PutNumber( scripthandle, "Misc", "XboxDoubleJump",xbox_double_jump,false,false);
     }
 #endif
     SCRIPT_PutNumber( scripthandle, "Screen Setup", "MaxRefreshFreq",max(0,(int)getmaxrefreshfreq()),false,false);

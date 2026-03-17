@@ -37,6 +37,9 @@ int32 lastcontroltime; //MED
 #ifdef _XBOX
 int xbox_vibration = 1;  /* 0=off, 1=on */
 int xbox_bloody_mess = 0; /* 0=off, 1=on — enemies always gib on death */
+int xbox_stronger_pipebombs = 0; /* 0=off, 1=on — 1.5x radius, 1.25x damage */
+int xbox_hardcore_mode = 0; /* 0=off, 1=on — start each level with only pistol */
+int xbox_double_jump = 0; /* 0=off, 1=on — allow one extra jump mid-air */
 #endif
 
 void setpal(struct player_struct *p)
@@ -3074,6 +3077,9 @@ void processinput(short snum)
                 p->hard_landing = p->poszv>>10;
 
             p->on_ground = 1;
+#ifdef _XBOX
+            p->can_double_jump = 1;
+#endif
 
             if( i==40 )
             {
@@ -3125,6 +3131,22 @@ void processinput(short snum)
             if( (sb_snum&1) == 0 && p->jumping_toggle == 1)
                 p->jumping_toggle = 0;
 
+#ifdef _XBOX
+            /* Double jump: if jump pressed mid-air with toggle released,
+             * restart the jump arc from the beginning. */
+            { extern int xbox_double_jump;
+              if (xbox_double_jump && p->can_double_jump
+                  && (sb_snum&1) && p->jumping_toggle == 0
+                  && p->jumping_counter > 180)
+              {
+                  p->jumping_counter = 1;
+                  p->jumping_toggle = 1;
+                  p->poszv = 0;
+                  p->can_double_jump = 0;
+              }
+            }
+#endif
+
             if( p->jumping_counter < (1024+256) )
             {
                 if(psectlotag == 1 && p->jumping_counter > 768)
@@ -3145,6 +3167,20 @@ void processinput(short snum)
                 p->poszv = 0;
             }
         }
+
+#ifdef _XBOX
+        /* Double jump while falling (jumping_counter already 0, not on ground) */
+        { extern int xbox_double_jump;
+          if (xbox_double_jump && !p->jumping_counter && !p->on_ground
+              && p->can_double_jump && (sb_snum&1) && p->jumping_toggle == 0)
+          {
+              p->jumping_counter = 1;
+              p->jumping_toggle = 1;
+              p->poszv = 0;
+              p->can_double_jump = 0;
+          }
+        }
+#endif
 
         p->posz += p->poszv;
 
