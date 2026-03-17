@@ -145,6 +145,9 @@ int glpolygonmode = 0;     // 0:GL_FILL,1:GL_LINE,2:GL_POINT,3:clear+GL_FILL
 
 static GLuint texttexture = 0;
 static GLuint nulltexture = 0;
+#ifdef _XBOX
+static GLuint whitetexture = 0;	// 1x1 opaque white — for solid-colour draws on NV2A
+#endif
 
 #define SHADERDEV 1
 static struct {
@@ -503,6 +506,12 @@ void polymost_glreset (void)
 		glfunc.glDeleteTextures(1, &nulltexture);
 		nulltexture = 0;
 	}
+#ifdef _XBOX
+	if (whitetexture) {
+		glfunc.glDeleteTextures(1, &whitetexture);
+		whitetexture = 0;
+	}
+#endif
 }
 
 static GLint polymost_get_attrib(GLuint program, const GLchar *name)
@@ -639,6 +648,18 @@ static void polymost_loadshaders(void)
 		glfunc.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 		glfunc.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 	}
+#ifdef _XBOX
+	// Opaque white texture for solid-colour draws (palfade tints).
+	// NV2A combiners always do texture*colour, so mode-2 draws need white.
+	if (!whitetexture) {
+		const char pix[4] = {0xFF,0xFF,0xFF,0xFF};
+		glfunc.glGenTextures(1, &whitetexture);
+		glfunc.glBindTexture(GL_TEXTURE_2D, whitetexture);
+		glfunc.glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,1,1,0,GL_RGBA,GL_UNSIGNED_BYTE,(GLvoid*)&pix);
+		glfunc.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
+		glfunc.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
+	}
+#endif
 
 	// Engine auxiliary shader.
 	if (polymostauxglsl.program) {
@@ -942,7 +963,11 @@ static void polymost_palfade(void)
 	if (palfadedelta == 0) return;
 
 	draw.mode = 2;	// Solid colour.
-	draw.texture0 = nulltexture;	// Xbox: combiners always sample texture
+#ifdef _XBOX
+	draw.texture0 = whitetexture;	// NV2A combiners do tex*colour, so white = pass-through
+#else
+	draw.texture0 = nulltexture;
+#endif
 
 	draw.colour.r = palfadergb.r / 255.f;
 	draw.colour.g = palfadergb.g / 255.f;

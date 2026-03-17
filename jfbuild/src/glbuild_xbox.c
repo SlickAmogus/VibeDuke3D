@@ -2684,6 +2684,16 @@ void xbox_tex_reset_level_state(void)
 	xbox_tex_alloc_fail_count = 0;
 }
 
+int xbox_tex_get_total_bytes(void) { return total_texture_bytes; }
+
+int xbox_tex_get_alloc_count(void)
+{
+	int n = 0;
+	for (int i = 1; i < MAX_TEXTURES; i++)
+		if (texture_table[i].allocated) n++;
+	return n;
+}
+
 // Shut down pbkit and release all GPU resources.
 // Called from setvideomode when switching back to 8-bit software mode.
 // After this, the PCRTC scanout is restored to the original framebuffer

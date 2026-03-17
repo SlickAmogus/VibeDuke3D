@@ -578,17 +578,6 @@ static void PumpAudio(void)
         writeBytes = DS_BUFFER_SIZE - DSWriteCursor + playCursor;
     }
 
-    /* Underrun recovery: if we need to fill more than 75% of the buffer,
-     * the play cursor has likely lapped our write cursor during a long
-     * stall (e.g. tile preloading, texture eviction, level load).  The
-     * circular-distance formula can't distinguish "100 bytes ahead" from
-     * "one full lap + 100 bytes ahead," so reset to the DirectSound write
-     * cursor and fill a modest amount to resume cleanly. */
-    if (writeBytes > DS_BUFFER_SIZE * 3 / 4) {
-        DSWriteCursor = writeCursor;
-        writeBytes = DS_BUFFER_SIZE / 4;
-    }
-
     if (writeBytes < 1024) return;
     writeBytes -= 512;
 

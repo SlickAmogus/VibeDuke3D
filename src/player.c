@@ -1894,16 +1894,35 @@ void getinput(short snum)
     momx = momy = 0;
     p = &ps[snum];
 
-    if( (p->gm&MODE_MENU) || (p->gm&MODE_TYPE) || (ud.pause_on && !KB_KeyPressed(sc_Pause)) )
     {
-         CONTROL_GetInput( &info );
-	     memset(&lastinfo, 0, sizeof(lastinfo));
-         loc.fvel = vel = 0;
-         loc.svel = svel = 0;
-         loc.avel = angvel = 0;
-         loc.horz = horiz = 0;
-         loc.bits = (((int)gamequit)<<26);
-         return;
+        static int was_blocked = 0;
+        int blocked = (p->gm&MODE_MENU) || (p->gm&MODE_TYPE) ||
+                      (ud.pause_on && !KB_KeyPressed(sc_Pause));
+        if (blocked) {
+            CONTROL_GetInput( &info );
+            memset(&lastinfo, 0, sizeof(lastinfo));
+            loc.fvel = vel = 0;
+            loc.svel = svel = 0;
+            loc.avel = angvel = 0;
+            loc.horz = horiz = 0;
+            loc.bits = (((int)gamequit)<<26);
+            was_blocked = 1;
+            return;
+        }
+        /* First frame after menu/pause close: read and discard all button
+         * input so the button used to close the menu (e.g. B = Use Inventory)
+         * doesn't bleed through to gameplay. */
+        if (was_blocked) {
+            was_blocked = 0;
+            CONTROL_GetInput( &info );
+            memset(&lastinfo, 0, sizeof(lastinfo));
+            loc.fvel = vel = 0;
+            loc.svel = svel = 0;
+            loc.avel = angvel = 0;
+            loc.horz = horiz = 0;
+            loc.bits = (((int)gamequit)<<26);
+            return;
+        }
     }
 
     if (ud.mouseaiming)

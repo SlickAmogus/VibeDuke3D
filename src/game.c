@@ -313,6 +313,13 @@ void setgamepalette(struct player_struct *player, unsigned char *pal, int set)
         if (player->palette != palette && player->palette != waterpal && player->palette != slimepal)
             setbrightness(ud.brightness>>2, palette, set);
         else setpalettefade(0,0,0,0);
+
+        /* Polymost doesn't do palette remapping, so simulate environment
+         * tints via the palfade overlay (green = nightvision, blue = underwater) */
+        if (pal == slimepal)
+            setpalettefade(0, 18, 0, 24);       /* green tint for nightvision */
+        else if (pal == waterpal)
+            setpalettefade(0, 0, 18, 24);        /* blue tint for underwater */
     } else {
         polymosttexfullbright = 256;
         setbrightness(ud.brightness>>2, pal, set);

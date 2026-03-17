@@ -1679,6 +1679,23 @@ int handleevents(void)
 		extern int EmuMode;
 		if (EmuMode) SDL_Delay(1);
 	}
+
+	/* Periodic memory diagnostics — log every 60 seconds to help
+	 * diagnose gradual resource exhaustion in long play sessions. */
+	{
+		extern volatile DWORD KeTickCount;
+		static DWORD last_diag = 0;
+		if (KeTickCount - last_diag >= 60000) {
+			extern void xbox_log(const char *fmt, ...);
+			extern int xbox_tex_get_total_bytes(void);
+			extern int xbox_tex_get_alloc_count(void);
+			xbox_log("DIAG t=%u tex=%dKB n=%d\n",
+				(unsigned)(KeTickCount / 1000),
+				xbox_tex_get_total_bytes() / 1024,
+				xbox_tex_get_alloc_count());
+			last_diag = KeTickCount;
+		}
+	}
 #endif
 	int code, rv=0, j, control;
 	SDL_Event ev;

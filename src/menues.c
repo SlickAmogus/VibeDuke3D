@@ -416,6 +416,28 @@ int loadplayer(signed char spot)
 
      clearbufbyte(gotpic,sizeof(gotpic),0L);
      clearsoundlocks();
+
+#ifdef _XBOX
+     /* Free all GPU textures before precache.  Without this, save-loading
+      * leaves old textures allocated, causing proactive-eviction churn
+      * (MmAllocateContiguousMemoryEx/MmFreeContiguousMemory cycles) that
+      * can fragment physical memory over many death/reload cycles. */
+     {
+         extern void PTReset(void);
+         extern void xbox_log(const char *fmt, ...);
+         extern void pb_reset(void);
+         extern int pb_busy(void);
+         extern void xbox_force_frame_reset(void);
+         extern volatile DWORD KeTickCount;
+
+         pb_reset();
+         { DWORD t0 = KeTickCount; while (pb_busy()) { if (KeTickCount - t0 > 500) break; } }
+         xbox_force_frame_reset();
+         xbox_log("loadplayer: PTReset (free all textures for clean reload)\n");
+         PTReset();
+     }
+#endif
+
          cacheit();
 
      music_select = (ud.volume_number*11) + ud.level_number;
