@@ -146,7 +146,7 @@ int glpolygonmode = 0;     // 0:GL_FILL,1:GL_LINE,2:GL_POINT,3:clear+GL_FILL
 static GLuint texttexture = 0;
 static GLuint nulltexture = 0;
 #ifdef _XBOX
-static GLuint whitetexture = 0;	// 1x1 opaque white — for solid-colour draws on NV2A
+static GLuint whitetexture = 0;	// 2x2 opaque white — for solid-colour draws on NV2A
 #endif
 
 #define SHADERDEV 1
@@ -649,13 +649,18 @@ static void polymost_loadshaders(void)
 		glfunc.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 	}
 #ifdef _XBOX
-	// Opaque white texture for solid-colour draws (palfade tints).
+	// 2x2 opaque white texture for solid-colour draws (palfade tints).
 	// NV2A combiners always do texture*colour, so mode-2 draws need white.
+	// Must be 2x2 (not 1x1) because NV2A rejects 1x1 swizzled textures and
+	// glTexImage2D pads to 2x2 — only filling the top-left pixel white.
 	if (!whitetexture) {
-		const char pix[4] = {0xFF,0xFF,0xFF,0xFF};
+		const unsigned char pix[2*2*4] = {
+			0xFF,0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,0xFF,
+			0xFF,0xFF,0xFF,0xFF, 0xFF,0xFF,0xFF,0xFF
+		};
 		glfunc.glGenTextures(1, &whitetexture);
 		glfunc.glBindTexture(GL_TEXTURE_2D, whitetexture);
-		glfunc.glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,1,1,0,GL_RGBA,GL_UNSIGNED_BYTE,(GLvoid*)&pix);
+		glfunc.glTexImage2D(GL_TEXTURE_2D,0,GL_RGBA,2,2,0,GL_RGBA,GL_UNSIGNED_BYTE,(GLvoid*)pix);
 		glfunc.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MAG_FILTER,GL_NEAREST);
 		glfunc.glTexParameteri(GL_TEXTURE_2D,GL_TEXTURE_MIN_FILTER,GL_NEAREST);
 	}
@@ -940,6 +945,9 @@ static void polymost_drawaux_glcall(GLenum mode, struct polymostdrawauxcall *dra
 	 * so reset modelview to identity here to prevent the last 3D camera
 	 * transform from distorting 2D overlays (palfade, text, HUD sprites). */
 	glfunc.glUniformMatrix4fv(polymostglsl.uniform_modelview, 1, GL_FALSE, &gidentitymat[0][0]);
+	/* Clear alpha cutoff so NV2A hardware alpha test doesn't discard
+	 * translucent fragments (leftover alphacut from 3D draws). */
+	glfunc.glUniform1f(polymostglsl.uniform_alphacut, 0.0f);
 #endif
 
 	glfunc.glUniform1f(polymostauxglsl.uniform_gamma, usegammabrightness == 1 ? curgamma : 1.0);
@@ -962,6 +970,19 @@ static void polymost_palfade(void)
 	if ((rendmode != 3) || (qsetmode != 200)) return;
 	if (palfadedelta == 0) return;
 
+#ifdef _XBOX
+	{
+		extern void xbox_log(const char *fmt, ...);
+		static int pf_log = 0;
+		if (pf_log < 5) {
+			xbox_log("palfade: delta=%d rgb=(%d,%d,%d) whitetex=%u\n",
+				(int)palfadedelta, (int)palfadergb.r, (int)palfadergb.g,
+				(int)palfadergb.b, (unsigned)whitetexture);
+			pf_log++;
+		}
+	}
+#endif
+
 	draw.mode = 2;	// Solid colour.
 #ifdef _XBOX
 	draw.texture0 = whitetexture;	// NV2A combiners do tex*colour, so white = pass-through
@@ -974,21 +995,19 @@ static void polymost_palfade(void)
 	draw.colour.b = palfadergb.b / 255.f;
 	draw.colour.a = palfadedelta / 255.f;
 
+	memset(vboitem, 0, sizeof(vboitem));
+
 	vboitem[0].v.x = 0.f;
 	vboitem[0].v.y = 0.f;
-	vboitem[0].v.z = 0.f;
 
 	vboitem[1].v.x = (float)xdim;
 	vboitem[1].v.y = 0.f;
-	vboitem[1].v.z = 0.f;
 
 	vboitem[2].v.x = (float)xdim;
 	vboitem[2].v.y = (float)ydim;
-	vboitem[2].v.z = 0.f;
 
 	vboitem[3].v.x = 0.f;
 	vboitem[3].v.y = (float)ydim;
-	vboitem[3].v.z = 0.f;
 
 	draw.indexcount = 4;
 	draw.indexes = NULL;

@@ -966,6 +966,7 @@ void CONFIG_WriteSetup( void )
     SCRIPT_Save (scripthandle, setupfilename);
 #endif
     SCRIPT_Free (scripthandle);
+    scripthandle = -1;
 }
 
 

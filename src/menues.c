@@ -2695,6 +2695,8 @@ if (!VOLUMEALL) {
                             /* No change — just acknowledge */
                             xbox_apply_msg = 1;
                         } else {
+                            if (xbox_res_pending == 2)
+                                sound(JIBBED_ACTOR4); /* "Holy shit!" for native 720p */
                             /* Save new mode and prompt restart */
                             xbox_res_mode = xbox_res_pending;
                             switch (xbox_res_mode) {
@@ -3796,16 +3798,16 @@ if (!VOLUMEALL) {
         }
 
         gametextpal(40,c, "Bloody Mess", 0, 2);
-        gametextpal(170,c, xbox_bloody_mess ? "On" : "Off", 0, 0);
+        gametextpal(240,c, xbox_bloody_mess ? "On" : "Off", 0, 0);
         c += 20;
         gametextpal(40,c, "Stronger Pipebombs", 0, 2);
-        gametextpal(170,c, xbox_stronger_pipebombs ? "On" : "Off", 0, 0);
+        gametextpal(240,c, xbox_stronger_pipebombs ? "On" : "Off", 0, 0);
         c += 20;
         gametextpal(40,c, "Hardcore", 0, 2);
-        gametextpal(170,c, xbox_hardcore_mode ? "On" : "Off", 0, 0);
+        gametextpal(240,c, xbox_hardcore_mode ? "On" : "Off", 0, 0);
         c += 20;
         gametextpal(40,c, "Double Jump", 0, 2);
-        gametextpal(170,c, xbox_double_jump ? "On" : "Off", 0, 0);
+        gametextpal(240,c, xbox_double_jump ? "On" : "Off", 0, 0);
 
         /* Description text at bottom */
         {
