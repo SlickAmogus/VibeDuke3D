@@ -2848,7 +2848,7 @@ void drawbackground(void)
 
     flushperms();
 
-    dapicnum = MENUSCREEN;
+    dapicnum = BIGHOLE;
 
     if (tilesizx[dapicnum] == 0 || tilesizy[dapicnum] == 0) {
         pus = pub = NUMPAGES;
@@ -2858,6 +2858,8 @@ void drawbackground(void)
     y1 = 0; y2 = ydim;
     if( ready2send || (ps[myconnectindex].gm&MODE_GAME) || ud.recstat == 2 )
     {
+        /* In-game screen border uses MENUSCREEN instead of BIGHOLE */
+        dapicnum = MENUSCREEN;
         if(ud.coop != 1)
         {
             if (ud.multimode > 1) y1 += tilesizy[FRAGBAR];
