@@ -587,8 +587,11 @@ int saveplayer(signed char spot)
     }
 
 #ifdef _XBOX
-    /* Write saves to D:\ (virtual drive mapped to XBE directory, writable on HDD) */
-    Bsnprintf(xfn, sizeof(xfn), "D:\\%s", fnptr);
+    /* Write saves to writable dir (D:\ from HDD, E:\jfduke3d\ from disc) */
+    {
+        extern const char *xbox_get_writedir(void);
+        Bsnprintf(xfn, sizeof(xfn), "%s%s", xbox_get_writedir(), fnptr);
+    }
     fnptr = xfn;
     buildprintf("saveplayer: writing to '%s'\n", fnptr);
 #endif

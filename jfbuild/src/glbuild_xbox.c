@@ -57,7 +57,6 @@ static const GLubyte xbox_gl_renderer[]   = "NV2A (pbkit)";
 static const GLubyte xbox_gl_extensions[] = "GL_EXT_texture_filter_anisotropic "
                                             "GL_EXT_bgra "
                                             "GL_EXT_texture_compression_s3tc "
-                                            "GL_ARB_texture_non_power_of_two "
                                             "GL_ARB_shading_language_100";
 static const GLubyte xbox_glsl_version[]  = "1.10";
 
@@ -1080,27 +1079,47 @@ static void APIENTRY xbox_glTexImage2D(GLenum target, GLint level, GLint ifmt,
 				return;
 			}
 		}
-		memset(linear, 0, staging_needed);
-
+		/* Fill the full POT staging buffer by wrapping the source texture.
+		 * NV2A requires POT dimensions for swizzled textures.  If the source
+		 * is NPOT (w < aw or h < ah), the padding must contain wrapped copies
+		 * of the source data so that GL_REPEAT produces correct tiling.
+		 * Without this, the padding is zeroed (black + alpha=0), creating
+		 * visible voids on masked walls with alpha testing. */
 		const unsigned char *sp = (const unsigned char *)px;
 		if (fmt == GL_BGRA) {
-			for (int row = 0; row < h; row++) {
-				memcpy(linear + row * aw * 4, sp + row * w * 4, w * 4);
+			for (int row = 0; row < ah; row++) {
+				int srcrow = (h > 0) ? (row % h) : 0;
+				memcpy(linear + row * aw * 4, sp + srcrow * w * 4, w * 4);
+				/* Wrap extra columns */
+				for (int x = w; x < aw; x++) {
+					memcpy(linear + row * aw * 4 + x * 4,
+					       linear + row * aw * 4 + (x % w) * 4, 4);
+				}
 			}
 		} else if (fmt == GL_RGBA) {
-			for (int row = 0; row < h; row++) {
+			for (int row = 0; row < ah; row++) {
+				int srcrow = (h > 0) ? (row % h) : 0;
 				unsigned char *dst = linear + row * aw * 4;
-				const unsigned char *src = sp + row * w * 4;
+				const unsigned char *src = sp + srcrow * w * 4;
 				for (int x = 0; x < w; x++) {
 					dst[x*4+0] = src[x*4+2]; // B
 					dst[x*4+1] = src[x*4+1]; // G
 					dst[x*4+2] = src[x*4+0]; // R
 					dst[x*4+3] = src[x*4+3]; // A
 				}
+				/* Wrap extra columns (already BGRA-swapped) */
+				for (int x = w; x < aw; x++) {
+					memcpy(dst + x * 4, dst + (x % w) * 4, 4);
+				}
 			}
 		} else {
-			for (int row = 0; row < h; row++) {
-				memcpy(linear + row * aw * 4, sp + row * w * 4, w * 4);
+			for (int row = 0; row < ah; row++) {
+				int srcrow = (h > 0) ? (row % h) : 0;
+				memcpy(linear + row * aw * 4, sp + srcrow * w * 4, w * 4);
+				for (int x = w; x < aw; x++) {
+					memcpy(linear + row * aw * 4 + x * 4,
+					       linear + row * aw * 4 + (x % w) * 4, 4);
+				}
 			}
 		}
 
@@ -2640,7 +2659,7 @@ int glbuild_init(void)
 	glinfo.maxanisotropy = 4.0f;
 	glinfo.bgra = 1;
 	glinfo.clamptoedge = 1;
-	glinfo.texnpot = 1;
+	glinfo.texnpot = 0;  /* NV2A requires POT for swizzled textures; let polymosttex pad */
 	glinfo.texcomprdxt1 = 1;
 	glinfo.texcomprdxt5 = 1;
 	glinfo.loaded = 1;

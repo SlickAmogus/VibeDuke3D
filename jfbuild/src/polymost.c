@@ -1284,7 +1284,15 @@ void drawpoly (double *dpx, double *dpy, int n, int method)
 
 			ngux *= hackscx; nguy *= hackscx; nguo *= hackscx;
 			ngvx *= hackscy; ngvy *= hackscy; ngvo *= hackscy;
+#ifdef _XBOX
+			/* Xbox: polymosttex pads NPOT textures left-aligned (tile data at
+			 * columns 0..tsizx-1).  The original centering offset assumes the
+			 * tile is centered in the padded texture, which shifts the strip
+			 * selection and misaligns the texture by (xx-tsizx)/2 pixels. */
+			uoffs = 0;
+#else
 			uoffs = ((double)(xx-tsizx)*.5);
+#endif
 			ngux -= ngdx*uoffs;
 			nguy -= ngdy*uoffs;
 			nguo -= ngdo*uoffs;

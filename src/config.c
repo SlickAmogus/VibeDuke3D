@@ -96,12 +96,14 @@ int32 ForceSetup = 1;
 int32 DisplayWidth = 1280;
 int32 DisplayHeight = 720;
 int32 xbox_res_mode = 1;   /* 0=480p, 1=720p(480p upscaled), 2=720p */
+int32 xbox_software_mode = 0; /* 1=use 8bpp SDL software renderer */
 #endif
 
 #ifdef _XBOX
-/* Read uses bare name (found via search paths); write uses absolute D:\ path */
+/* Read uses bare name (found via search paths); write uses xbox_get_writedir() */
+extern const char *xbox_get_writedir(void);
 static char setupfilename[256]={"duke3d.cfg"};
-static const char setupwritepath[]="D:\\duke3d.cfg";
+static char setupwritepath[256];
 #else
 static char setupfilename[256]={SETUPFILENAME};
 #endif
@@ -640,6 +642,11 @@ int32 CONFIG_ReadSetup( void )
     char commmacro[] = "CommbatMacro# ";
     extern int32 CommandWeaponChoice;
 
+#ifdef _XBOX
+    /* Build the writable config path from the probed write directory */
+    Bsnprintf(setupwritepath, sizeof(setupwritepath), "%sduke3d.cfg", xbox_get_writedir());
+#endif
+
     CONTROL_ClearAssignments();
     CONFIG_SetDefaults();
 
@@ -695,7 +702,15 @@ int32 CONFIG_ReadSetup( void )
         ScreenWidth = 1280; ScreenHeight = 720;
         break;
     }
-    ScreenBPP = 32;
+    SCRIPT_GetNumber( scripthandle, "Screen Setup", "XboxSoftwareMode", &xbox_software_mode);
+    if (xbox_software_mode) {
+        ScreenBPP = 8;
+        /* Software mode: use 640x480 regardless of res_mode */
+        DisplayWidth = 640; DisplayHeight = 480;
+        ScreenWidth = 640; ScreenHeight = 480;
+    } else {
+        ScreenBPP = 32;
+    }
     {
         extern int xbox_vibration;
         extern int xbox_bloody_mess;
@@ -829,6 +844,7 @@ void CONFIG_WriteSetup( void )
     SCRIPT_PutNumber( scripthandle, "Screen Setup", "ScreenBPP",ScreenBPP,false,false);
 #ifdef _XBOX
     SCRIPT_PutNumber( scripthandle, "Screen Setup", "XboxResMode",xbox_res_mode,false,false);
+    SCRIPT_PutNumber( scripthandle, "Screen Setup", "XboxSoftwareMode",xbox_software_mode,false,false);
     {
         extern int xbox_vibration;
         extern int xbox_bloody_mess;

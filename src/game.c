@@ -8265,7 +8265,12 @@ int app_main(int argc, char const * const argv[])
 #ifdef _XBOX
     /* pdclib fopen uses CreateFileA with ObDosDevicesDirectory() root — only
      * drive-letter absolute paths work.  E:\ is the HDD game partition. */
-    buildsetlogfile("D:\\dn3d_debug.log");
+    {
+        extern const char *xbox_get_writedir(void);
+        char logpath[128];
+        Bsnprintf(logpath, sizeof(logpath), "%sdn3d_debug.log", xbox_get_writedir());
+        buildsetlogfile(logpath);
+    }
 #else
     buildsetlogfile("duke3d.log");
 #endif
@@ -8914,7 +8919,9 @@ corrupt:
 void opendemowrite(void)
 {
 #ifdef _XBOX
-    char d[64] = "D:\\demo1.dmo";
+    extern const char *xbox_get_writedir(void);
+    char d[128];
+    Bsnprintf(d, sizeof(d), "%sdemo1.dmo", xbox_get_writedir());
 #else
     char *d = "demo1.dmo";
 #endif

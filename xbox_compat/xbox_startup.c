@@ -26,6 +26,20 @@ static int xbox_log_fd = -1;
 /* _write is declared in io.h but we can also just declare it here */
 extern int _write(int fd, const void *buf, unsigned int count);
 extern int _open(const char *path, int flags, ...);
+extern int _close(int fd);
+
+/* Writable path prefix for config/saves/logs.
+ * Probed at startup: D:\ first (works when running from HDD via FTP),
+ * falls back to E:\jfduke3d\ (works when booting from XISO disc).
+ * Other files use xbox_get_writedir() to build writable paths. */
+static char xbox_writedir[64] = "D:\\";
+
+/* Returns the writable directory prefix (with trailing backslash).
+ * E.g. "D:\\" when running from HDD, "E:\\jfduke3d\\" from disc. */
+const char *xbox_get_writedir(void)
+{
+    return xbox_writedir;
+}
 
 void xbox_log(const char *fmt, ...)
 {
@@ -125,15 +139,51 @@ static void xbox_hw_preinit(void)
     /* Register cleanup handler (runs before exit()'s HalReturnToFirmware). */
     atexit(xbox_cleanup);
 
-    /* Open log file */
-    static const char * const log_paths[] = {
-        "D:\\dn3d_debug.log",
-        "E:\\test_xemu.log",
-        NULL
-    };
-    for (int i = 0; log_paths[i] && xbox_log_fd < 0; i++)
-        xbox_log_fd = _open(log_paths[i], _O_WRONLY | _O_CREAT | _O_TRUNC, 0);
+    /* Probe writable directory: try D:\ first (HDD launch), fall back to
+     * E:\jfduke3d\ (disc/XISO launch).  We test by creating+closing a file. */
+    {
+        static const char * const try_dirs[] = {
+            "D:\\",
+            "E:\\jfduke3d\\",
+            "E:\\",
+            NULL
+        };
+        for (int i = 0; try_dirs[i]; i++) {
+            char probe[80];
+            int n = 0;
+            const char *d = try_dirs[i];
+            while (*d && n < 64) probe[n++] = *d++;
+            /* Append test filename */
+            const char *tf = ".writeable";
+            while (*tf && n < 78) probe[n++] = *tf++;
+            probe[n] = '\0';
+
+            int fd = _open(probe, _O_WRONLY | _O_CREAT | _O_TRUNC, 0);
+            if (fd >= 0) {
+                _close(fd);
+                /* Copy the winning prefix */
+                const char *s = try_dirs[i];
+                char *dst = xbox_writedir;
+                while (*s) *dst++ = *s++;
+                *dst = '\0';
+                break;
+            }
+        }
+    }
+
+    /* Open log file in the writable directory */
+    {
+        char logpath[80];
+        int n = 0;
+        const char *s = xbox_writedir;
+        while (*s) logpath[n++] = *s++;
+        const char *lf = "dn3d_debug.log";
+        while (*lf) logpath[n++] = *lf++;
+        logpath[n] = '\0';
+        xbox_log_fd = _open(logpath, _O_WRONLY | _O_CREAT | _O_TRUNC, 0);
+    }
 
     xbox_log("=== jfduke3d Xbox log ===\n");
     xbox_log("Video: 640x480 32bpp (safe default)  log_fd=%d\n", xbox_log_fd);
+    xbox_log("Write directory: %s\n", xbox_writedir);
 }

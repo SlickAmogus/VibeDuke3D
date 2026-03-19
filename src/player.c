@@ -1912,19 +1912,26 @@ void getinput(short snum)
             was_blocked = 1;
             return;
         }
-        /* First frame after menu/pause close: read and discard all button
-         * input so the button used to close the menu (e.g. B = Use Inventory)
-         * doesn't bleed through to gameplay. */
+        /* After menu/pause close: keep discarding input until all game-function
+         * buttons are released, so the button used to close the menu (e.g. B =
+         * Use Inventory) doesn't bleed through to gameplay. */
         if (was_blocked) {
-            was_blocked = 0;
             CONTROL_GetInput( &info );
+            {
+                extern uint32 CONTROL_ButtonState1, CONTROL_ButtonState2;
+                if (CONTROL_ButtonState1 || CONTROL_ButtonState2) {
+                    /* Buttons still held — keep discarding */
+                    memset(&lastinfo, 0, sizeof(lastinfo));
+                    loc.fvel = vel = 0;
+                    loc.svel = svel = 0;
+                    loc.avel = angvel = 0;
+                    loc.horz = horiz = 0;
+                    loc.bits = (((int)gamequit)<<26);
+                    return;
+                }
+            }
+            was_blocked = 0;
             memset(&lastinfo, 0, sizeof(lastinfo));
-            loc.fvel = vel = 0;
-            loc.svel = svel = 0;
-            loc.avel = angvel = 0;
-            loc.horz = horiz = 0;
-            loc.bits = (((int)gamequit)<<26);
-            return;
         }
     }
 
