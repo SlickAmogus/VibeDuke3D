@@ -1,4 +1,4 @@
-# VibeDuke3D v1.1
+# VibeDuke3D
 ## AKA jfduke3d-xbox
 
 Duke Nukem 3D port for the original Xbox, based on [JFDuke3D](http://www.jonof.id.au/jfduke3d) by Jonathon Fowler. Built using the [nxdk](https://github.com/XboxDev/nxdk) open-source Xbox development kit.
@@ -14,16 +14,16 @@ FTP or otherwise move the XBE file to the desired location on your Xbox and plac
 - Hardware renderer, conversion of POLYMOST to NV2A
 - OGG Vorbis music playback via stb_vorbis
 - Hardware audio support featuring full 5.1 surround sound via optical
-- Native 720p with auto-detection (480i/480p/720p/1080i), can be specified in config if detection fails
-- Xbox controller support (dual analog sticks, triggers, vibration)
-- Cursor adjusts to hitscan position, making aiming more accurate
+- Native 720p with auto-detection (480i/480p/720p), can be specified in config if detection fails
+- Full Xbox controller support (dual analog sticks, triggers, vibration)
+- Crosshair adjusts to hitscan position, making aiming more accurate (not perfect)
 - Save/load game support
 - Precaches common sprites to improve performance
 - Cheat support (see below)
+- Demo recording support, use the record demo option to save a replay that will show on the title screen
 - User map support
-- Extra Options menu: Bloody Mess, Stronger Pipebombs, Hardcore mode, Double Jump
-- Nightvision and underwater tints
-- Mirror rendering
+- Gameplay Modifiers
+- Workings mirrors, nightvision, and underwater tints
 - Writable directory probing (supports both HDD and disc boot)
 
 ### Music
@@ -62,16 +62,13 @@ Up Up Down Down Left Right Left Right B B A A  - Teleport to Stadium
 
 ### Known Issues
 
-- There are still performance issues sometimes, especially in 720p. You may notice minor hitching or stuttering at times, especially when there's a lot of action.
-- Has software rendering mode (config toggle), but currently crashes when switching to it in-game.
-- Haven't tested custom GRPs.
-- Recording demos will crash the game, and most PC options are untested. Change at your own risk. If your changes stop the game from booting, simply delete the config file.
+- May have missed a couple spots for Duke voice positional audio correction, so it will play out of other channels than center on 5.1 (only known is KTIT mic easter egg).
+- May still have minor graphical issues, but the ones I knew of have been fixed.
 - If you see any strange issues, please reach out to me on Discord and attach your log file (link below).
 
 ### Future Updates
 
-- Sound and performance fixes
-- Mod support
+- Mod support?
 - Multiplayer and couch coop
 
 ## Development Prerequisites
