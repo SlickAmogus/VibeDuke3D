@@ -1,19 +1,78 @@
-# VibeDuke3D v1.0
+# VibeDuke3D v1.1
 ## AKA jfduke3d-xbox
 
 Duke Nukem 3D port for the original Xbox, based on [JFDuke3D](http://www.jonof.id.au/jfduke3d) by Jonathon Fowler. Built using the [nxdk](https://github.com/XboxDev/nxdk) open-source Xbox development kit.
 
-This project was almost entirely vibe coded using Claude. We used JFDuke3D as the base and NXDK to get it working on Xbox. The result is a high performance, direct PC port with features like 720P 60 FPS gameplay, and hardware audio with 5.1 surround support. 
+This project was almost entirely vibe coded using Claude. We used JFDuke3D as the base and NXDK to get it working on Xbox. The result is a high performance, direct PC port with features like 720P 60 FPS gameplay, and hardware audio with 5.1 surround support.
+
+## Installation
+
+FTP or otherwise move the XBE file to the desired location on your Xbox and place a copy of `DUKE3D.GRP` next to it, then run.
 
 ## Features
 
-- Hardware renderer, conversion of POLYMOST to NV2A.
+- Hardware renderer, conversion of POLYMOST to NV2A
 - OGG Vorbis music playback via stb_vorbis
-- SDL2 input
-- Hardware audio including support for optical and 5.1 surround
-- Xbox controller support (dual analog sticks, triggers)
+- Hardware audio support featuring full 5.1 surround sound via optical
+- Native 720p with auto-detection (480i/480p/720p/1080i), can be specified in config if detection fails
+- Xbox controller support (dual analog sticks, triggers, vibration)
+- Cursor adjusts to hitscan position, making aiming more accurate
 - Save/load game support
-- 480i/480p/720p/1080i auto-detection
+- Precaches common sprites to improve performance
+- Cheat support (see below)
+- User map support
+- Extra Options menu: Bloody Mess, Stronger Pipebombs, Hardcore mode, Double Jump
+- Nightvision and underwater tints
+- Mirror rendering
+- Writable directory probing (supports both HDD and disc boot)
+
+### Music
+
+For music, extract the MID files from your GRP, convert them to OGG, and place in a `music/` folder next to the XBE file. There are scripts available in the repo to convert MIDI to OGG and further optimize OGGs. You can also copy the music folder straight from Megaton Edition.
+
+### Controls
+
+```
+A                   - Jump
+B                   - Use Item
+X                   - Activate
+Y                   - Crouch
+Left Stick          - Move
+Left Stick Click    - Kick
+Right Stick         - Aim
+Right Stick Click   - Third Person Toggle
+DPAD Left/Right     - Select Item
+DPAD Up             - Activate Jetpack
+DPAD Down           - Activate Medkit
+Right Trigger       - Shoot
+Left Trigger        - Walk
+Black/White         - Switch Weapons
+Select              - Toggle Map
+Start               - Pause
+```
+
+### Cheats
+
+```
+Up Up Down Down Left Right Left Right B A B A  - God Mode
+Up Up Down Down Left Right Left Right A B A B  - Give Everything
+Up Up Down Down Left Right Left Right A A B B  - Toggle Clipping
+Up Up Down Down Left Right Left Right B B A A  - Teleport to Stadium
+```
+
+### Known Issues
+
+- There are still performance issues sometimes, especially in 720p. You may notice minor hitching or stuttering at times, especially when there's a lot of action.
+- Has software rendering mode (config toggle), but currently crashes when switching to it in-game.
+- Haven't tested custom GRPs.
+- Recording demos will crash the game, and most PC options are untested. Change at your own risk. If your changes stop the game from booting, simply delete the config file.
+- If you see any strange issues, please reach out to me on Discord and attach your log file (link below).
+
+### Future Updates
+
+- Sound and performance fixes
+- Mod support
+- Multiplayer and couch coop
 
 ## Development Prerequisites
 
