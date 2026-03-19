@@ -1403,6 +1403,22 @@ void displayweapon(short snum)
     weapon_xoffset =  (160)-90;
     weapon_xoffset -= (sintable[((p->weapon_sway>>1)+512)&2047]/(1024+512));
     weapon_xoffset -= 58 + p->weapon_ang;
+#ifdef _XBOX
+    /* Widescreen offset: weapon art was designed for 4:3 (320 virtual pixels).
+     * On 16:9 the extra width leaves a gap at the screen edges.  Right-side
+     * weapons get +wx_wide, left-side sprites (kick) get -wx_wide. */
+    int wx_wide = 0;
+    {
+        extern int xdim, ydim;
+        int ax3 = xdim * 3, ay4 = ydim * 4;
+        if (ax3 > ay4)
+            wx_wide = (ax3 - ay4) * 160 / ay4;
+    }
+    weapon_xoffset += wx_wide;
+#define WX_KICK (2*wx_wide)  /* undo +wx_wide and apply -wx_wide for left-side sprites */
+#else
+#define WX_KICK 0
+#endif
     if( sprite[p->i].xrepeat < 32 )
         gun_pos -= klabs(sintable[(p->weapon_sway<<2)&2047]>>9);
     else gun_pos -= klabs(sintable[(p->weapon_sway>>1)&2047]>>10);
@@ -1427,9 +1443,9 @@ void displayweapon(short snum)
 
 
         if( j < 5 || j > 9 )
-            myospal(weapon_xoffset+80-(p->look_ang>>1),
+            myospal(weapon_xoffset+80-WX_KICK-(p->look_ang>>1),
                 looking_arc+250-gun_pos,KNEE,gs,o|4,pal);
-        else myospal(weapon_xoffset+160-16-(p->look_ang>>1),
+        else myospal(weapon_xoffset+160-16-WX_KICK-(p->look_ang>>1),
             looking_arc+214-gun_pos,KNEE+1,gs,o|4,pal);
     }
 
@@ -1448,7 +1464,7 @@ void displayweapon(short snum)
              FIST,gs,o);
         weapon_xoffset = cw;
         weapon_xoffset -= sintable[(fistsign)&2047]>>10;
-        myos(weapon_xoffset+40-(p->look_ang>>1),
+        myos(weapon_xoffset+40-WX_KICK-(p->look_ang>>1),
              looking_arc+200+(klabs(sintable[(fistsign)&2047]>>8)),
              FIST,gs,o|4);
     }

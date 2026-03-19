@@ -2848,12 +2848,7 @@ void drawbackground(void)
 
     flushperms();
 
-    switch(ud.m_volume_number)
-    {
-        default:dapicnum = BIGHOLE;break;
-        case 1:dapicnum = BIGHOLE;break;
-        case 2:dapicnum = BIGHOLE;break;
-    }
+    dapicnum = MENUSCREEN;
 
     if (tilesizx[dapicnum] == 0 || tilesizy[dapicnum] == 0) {
         pus = pub = NUMPAGES;

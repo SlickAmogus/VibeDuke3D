@@ -2698,7 +2698,9 @@ if (!VOLUMEALL) {
                             /* No change — just acknowledge */
                             xbox_apply_msg = 1;
                         } else {
-                            if (xbox_res_pending == 2)
+                            if (xbox_res_pending == 0)
+                                sound(JIBBED_ACTOR6); /* "Piece of cake" for 480p */
+                            else if (xbox_res_pending == 2)
                                 sound(JIBBED_ACTOR4); /* "Holy shit!" for native 720p */
                             /* Save new mode and prompt restart */
                             xbox_res_mode = xbox_res_pending;
