@@ -1,4 +1,4 @@
-# VibeDuke3D
+# VibeDuke3D v1.1
 ## AKA jfduke3d-xbox
 
 Duke Nukem 3D port for the original Xbox, based on [JFDuke3D](http://www.jonof.id.au/jfduke3d) by Jonathon Fowler. Built using the [nxdk](https://github.com/XboxDev/nxdk) open-source Xbox development kit.
@@ -64,6 +64,7 @@ Up Up Down Down Left Right Left Right B B A A  - Teleport to Stadium
 
 - May have missed a couple spots for Duke voice positional audio correction, so it will play out of other channels than center on 5.1 (only known is KTIT mic easter egg).
 - May still have minor graphical issues, but the ones I knew of have been fixed.
+- Equipped RPG sprite needs to be aligned to the right on widescreen resolutions.  
 - This will not work on emulators due to how rendering is handled and hardware audio!
 - If you see any strange issues, please reach out to me on Discord and attach your log file (link below).
 
