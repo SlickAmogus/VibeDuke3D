@@ -189,6 +189,8 @@ static int IsCenterChannelSound(short num)
         case WITNESSSTAND:
         case VACATIONSPEECH:
         case YIPPEE1:
+        case KTIT:
+        case BORNTOBEWILDSND:
             return 1;
         default:
             return 0;

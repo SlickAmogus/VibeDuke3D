@@ -1909,18 +1909,20 @@ void getinput(short snum)
             loc.avel = angvel = 0;
             loc.horz = horiz = 0;
             loc.bits = (((int)gamequit)<<26);
-            was_blocked = 1;
+            was_blocked = 3; /* discard at least 3 frames after menu close */
             return;
         }
-        /* After menu/pause close: keep discarding input until all game-function
-         * buttons are released, so the button used to close the menu (e.g. B =
-         * Use Inventory) doesn't bleed through to gameplay. */
+        /* After menu/pause close: discard input for several frames AND until
+         * all buttons are released.  The frame count ensures a quick B tap
+         * (used to close the menu) doesn't bleed through even if the button
+         * is released before the next processinput call.  The button check
+         * handles held buttons beyond the frame count. */
         if (was_blocked) {
             CONTROL_GetInput( &info );
+            was_blocked--;
             {
                 extern uint32 CONTROL_ButtonState1, CONTROL_ButtonState2;
-                if (CONTROL_ButtonState1 || CONTROL_ButtonState2) {
-                    /* Buttons still held — keep discarding */
+                if (was_blocked > 0 || CONTROL_ButtonState1 || CONTROL_ButtonState2) {
                     memset(&lastinfo, 0, sizeof(lastinfo));
                     loc.fvel = vel = 0;
                     loc.svel = svel = 0;
