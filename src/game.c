@@ -2871,10 +2871,8 @@ void drawbackground(void)
         if (ud.screen_size >= 8)
             y2 = ROUND16(scale(200<<16,ydim,200)-scale(tilesizy[BOTTOMSTATUSBAR] * sbarscale,ydim,200) + 32768);
     } else {
-        // when not rendering a game, fullscreen wipe
-        for(y=0;y<ydim;y+=tilesizy[dapicnum])
-            for(x=0;x<xdim;x+=tilesizx[dapicnum])
-                rotatesprite(x<<16,y<<16,65536L,0,dapicnum,8,0,8+16+64+128,0,0,xdim-1,ydim-1);
+        // when not rendering a game, draw LOADSCREEN stretched to fill
+        rotatesprite(160<<16,100<<16,65536L,0,LOADSCREEN,0,0,2+8+64,0,0,xdim-1,ydim-1);
         return;
     }
 
