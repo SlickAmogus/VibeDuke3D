@@ -17,9 +17,15 @@ This project was almost entirely vibe coded using Claude. We used JFDuke3D as th
 
 ## Development Prerequisites
 
-- [My NXDK Fork](https://github.com/SlickAmogus/nxdk) installed 
-- MSYS2 or Git Bash on Windows
-- GNU Make (MSYS2: `pacman -S make`)
+- **MSYS2** with GNU Make (`pacman -S make`) — or Git Bash with Make available
+- **[nxdk](https://github.com/SlickAmogus/nxdk)** — included as a git submodule (fork with S/PDIF audio patch)
+- **clang/lld** — provided by nxdk, no separate install needed
+
+After cloning, initialize the nxdk submodule:
+
+```bash
+git submodule update --init --recursive
+```
 
 ## Building
 
@@ -27,7 +33,9 @@ This project was almost entirely vibe coded using Claude. We used JFDuke3D as th
 bash build_xbox.sh
 ```
 
-Output: `bin/default.xbe`
+The build script handles the nxdk toolchain setup automatically — it sets `NXDK_DIR`, compiles Xbox-specific startup code, then runs `make -f Makefile.nxdk`.
+
+Output: `bin/default.xbe` (~2.4 MB Xbox executable)
 
 ## Game Data Setup
 
@@ -44,7 +52,7 @@ jfbuild/       Build engine (renderer, file I/O, SDL layer)
 jfmact/        Input/control library
 jfaudiolib/    Audio library (mixing, music, sound effects)
 xbox_compat/   Xbox compatibility shims (POSIX I/O, stubs, startup)
-nxdk/          NDDK fork default folder.
+nxdk/          nxdk submodule (Xbox open-source SDK, S/PDIF fork)
 ```
 
 ## License
