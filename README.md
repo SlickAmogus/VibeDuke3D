@@ -54,8 +54,8 @@ GPLv2 — see GPL.TXT
 
 ## Support
 
-Join The Chill Lounge discord for questions regarding any of my mods\projects (or feel free to message me):\
-https://discord.gg/U29t39WR73
+Feel free to message me on Discord @KushAstronaut or join my server (but nobody is in it so I may not notice):\
+https://discord.gg/U29t39WR73 - I am also in most duke or xbox related discord servers
 
 If you like what I do:\
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/F1F3K8V3B)
