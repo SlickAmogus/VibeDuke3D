@@ -1915,7 +1915,7 @@ cheat_for_port_credits:
 
             menutext(c,67+16+16+16+16+16,SHX(-7),PHX(-7),"QUIT");
 
-            gametextpal(160,67+16+16+16+16+16+24,"VibeDuke3D v1.1",8,1);
+            gametextpal(160,67+16+16+16+16+16+24,"VibeDuke3D v1.1a",8,1);
             break;
 
         case 50:
@@ -2007,7 +2007,7 @@ if (!VOLUMEALL) {
             else menutext(c,67+16+16+16+16+16   ,SHX(-7),PHX(-7),"QUIT TO TITLE");
             menutext(c,67+16+16+16+16+16+16,SHX(-8),PHX(-8),"QUIT GAME");
 
-            gametextpal(160,67+16+16+16+16+16+16+24,"VibeDuke3D v1.1",8,1);
+            gametextpal(160,67+16+16+16+16+16+16+24,"VibeDuke3D v1.1a",8,1);
             break;
 
         case 100:

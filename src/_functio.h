@@ -517,9 +517,9 @@ static char * joystickdigitaldefaults_modern[MAXJOYAXES*2] =
 static char * joystickdefaults_xbox[MAXJOYBUTTONS] =
    {
    "Jump",              // A
-   "Inventory",         // B (use item)
+   "Crouch",            // B
    "Open",              // X
-   "Crouch",            // Y
+   "Inventory",         // Y (use item)
    "Map",               // Back
    "",                  // Guide (no physical button on Xbox OG)
    "Show_Menu",         // Start

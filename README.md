@@ -34,9 +34,9 @@ For music, extract the MID files from your GRP, convert them to OGG, and place i
 
 ```
 A                   - Jump
-B                   - Use Item
+B                   - Crouch
 X                   - Activate
-Y                   - Crouch
+Y                   - Use Item
 Left Stick          - Move
 Left Stick Click    - Kick
 Right Stick         - Aim
