@@ -64,12 +64,23 @@ Up Up Down Down Left Right Left Right B B A A  - Teleport to Stadium
 
 - May have missed a couple spots for Duke voice positional audio correction, so it will play out of other channels than center on 5.1 (only known is KTIT mic easter egg).
 - May still have minor graphical issues, but the ones I knew of have been fixed.
+- This will not work on emulators due to how rendering is handled and hardware audio!
 - If you see any strange issues, please reach out to me on Discord and attach your log file (link below).
 
 ### Future Updates
 
 - Mod support?
 - Multiplayer and couch coop
+
+
+### Screenshots
+
+<img width="2880" height="2160" alt="image" src="https://github.com/user-attachments/assets/79f3e262-c413-4e8c-830d-a62fa6f518dc" /> 
+<img width="2880" height="2160" alt="image" src="https://github.com/user-attachments/assets/6dd16cfb-c8bf-46aa-a057-60e501fb7ad9" />
+<img width="2880" height="2160" alt="image" src="https://github.com/user-attachments/assets/2139cdd1-fc3e-4a94-a7c5-f2227ce906db" />
+<img width="2880" height="2160" alt="image" src="https://github.com/user-attachments/assets/f1e80364-b391-4fd3-a26f-63fcd6d01072" />
+<img width="2880" height="2160" alt="image" src="https://github.com/user-attachments/assets/2519ddf1-67e5-485b-89a3-fcdfaed2e43b" />
+
 
 ## Development Prerequisites
 
