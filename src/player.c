@@ -2516,6 +2516,12 @@ void processinput(short snum)
         }
         if(p->fist_incs > 42)
         {
+            /* Procedural mode: end episode after one level */
+            if(ud.volume_number == 4) {
+                ud.eog = 1;
+                ps[myconnectindex].gm = MODE_EOL;
+                return;
+            }
             if(p->buttonpalette && ud.from_bonus == 0)
             {
                 ud.from_bonus = ud.level_number+1;

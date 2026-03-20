@@ -2018,9 +2018,9 @@ if (!VOLUMEALL) {
             else if (VOLUMEONE)
                 x = probekeys(160,60,20,3,(int[]){sc_1, sc_2, sc_3, 0});
             else if (PLUTOPAK)
-                x = probekeys(160,60,20,5,(int[]){sc_1, sc_2, sc_3, sc_4, sc_U, 0});
+                x = probekeys(160,60,20,6,(int[]){sc_1, sc_2, sc_3, sc_4, sc_P, sc_U, 0});
             else
-                x = probekeys(160,60,20,4,(int[]){sc_1, sc_2, sc_3, sc_U, 0});
+                x = probekeys(160,60,20,5,(int[]){sc_1, sc_2, sc_3, sc_P, sc_U, 0});
             if(x >= 0)
             {
                 if (VOLUMEONE)
@@ -2034,11 +2034,18 @@ if (!VOLUMEALL) {
                         cmenu(110);
                     }
                 }
-                else if ((!PLUTOPAK && x == 3) || (PLUTOPAK && x == 4))
+                else if ((!PLUTOPAK && x == 4) || (PLUTOPAK && x == 5))
                 {
                     // User map menu.
                     currentlist = 1;
                     cmenu(101);
+                }
+                else if ((!PLUTOPAK && x == 3) || (PLUTOPAK && x == 4))
+                {
+                    // Procedural level.
+                    ud.m_volume_number = 4;
+                    ud.m_level_number = 0;
+                    cmenu(110);
                 }
                 else
                 {
@@ -2066,9 +2073,11 @@ if (!VOLUMEALL) {
                 menutext(160,60+20+20,SHX(-4),PHX(-4),volume_names[2]);
                 if (PLUTOPAK) {
                     menutext(160,60+20+20+20,SHX(-5),PHX(-5),volume_names[3]);
-                    menutext(160,60+20+20+20+20,SHX(-6),PHX(-6),"USER MAP");
+                    menutext(160,60+20+20+20+20,SHX(-6),PHX(-6),"PROCEDURAL");
+                    menutext(160,60+20+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
                 } else {
-                    menutext(160,60+20+20+20,SHX(-6),PHX(-6),"USER MAP");
+                    menutext(160,60+20+20+20,SHX(-6),PHX(-6),"PROCEDURAL");
+                    menutext(160,60+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
                 }
             }
             break;

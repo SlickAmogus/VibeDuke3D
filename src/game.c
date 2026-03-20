@@ -2657,8 +2657,12 @@ void displayrest(int smoothratio)
                     }
                     else a = 194;
 
-                    minitext(1,a-6,volume_names[ud.volume_number],0,2+8+16);
-                    minitext(1,a,level_names[ud.volume_number*11 + ud.level_number],0,2+8+16);
+                    if (ud.volume_number < 5)
+                        minitext(1,a-6,volume_names[ud.volume_number],0,2+8+16);
+                    if (ud.volume_number < 4)
+                        minitext(1,a,level_names[ud.volume_number*11 + ud.level_number],0,2+8+16);
+                    else if (ud.volume_number == 4)
+                        minitext(1,a,"RANDOM LEVEL",0,2+8+16);
                 }
         }
     }
@@ -2870,8 +2874,10 @@ void drawbackground(void)
         if (ud.screen_size >= 8)
             y2 = ROUND16(scale(200<<16,ydim,200)-scale(tilesizy[BOTTOMSTATUSBAR] * sbarscale,ydim,200) + 32768);
     } else {
-        // when not rendering a game, draw LOADSCREEN stretched to fill
-        rotatesprite(160<<16,100<<16,65536L,0,LOADSCREEN,0,0,2+8+64,0,0,xdim-1,ydim-1);
+        // when not rendering a game, tile BIGHOLE across fullscreen
+        for(y=0;y<ydim;y+=tilesizy[dapicnum])
+            for(x=0;x<xdim;x+=tilesizx[dapicnum])
+                rotatesprite(x<<16,y<<16,65536L,0,dapicnum,8,0,8+16+64+128,0,0,xdim-1,ydim-1);
         return;
     }
 
@@ -9864,6 +9870,12 @@ char domovethings(void)
         movestandables();       //ST 6
         doanimations();
         movefx();               //ST 11
+
+        /* Procedural mode: check if room barriers should be removed */
+        if (ud.volume_number == 4) {
+            extern void procgen_tick(void);
+            procgen_tick();
+        }
     }
 
     fakedomovethingscorrect();

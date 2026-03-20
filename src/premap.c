@@ -1683,6 +1683,16 @@ int enterlevel(unsigned char g)
     vscrn();
     ud.screen_size = i;
 
+    if (ud.volume_number == 4) {
+        /* Procedural level — generate instead of loading */
+        extern int procgen_generate_level(int*, int*, int*, short*, short*);
+#ifdef _XBOX
+        extern void xbox_log(const char *fmt, ...);
+        xbox_log("enterlevel: procedural generation...\n");
+#endif
+        l = procgen_generate_level(&ps[0].posx, &ps[0].posy, &ps[0].posz,
+                                    &ps[0].ang, &ps[0].cursectnum);
+    } else {
     if(!VOLUMEONE && boardfilename[0] != 0 && ud.m_level_number == 7 && ud.m_volume_number == 0 )
         path = boardfilename;
     else
@@ -1693,13 +1703,17 @@ int enterlevel(unsigned char g)
     xbox_log("enterlevel: loadboard %s...\n", path);
 #endif
     l = loadboard( path, VOLUMEONE, &ps[0].posx, &ps[0].posy, &ps[0].posz, &ps[0].ang,&ps[0].cursectnum );
+    }
 #ifdef _XBOX
     buildprintf("enterlevel: loadboard returned %d\n", l);
     xbox_log("enterlevel: loadboard returned %d\n", l);
 #endif
     if(l == 0)
     {
-        strcpy(levname, path);
+        if (ud.volume_number == 4)
+            strcpy(levname, "PROCGEN");
+        else
+            strcpy(levname, path);
 
         dot = Bstrrchr(levname,'.');
         if (!dot) strcat(levname,".mhk");
@@ -1738,7 +1752,8 @@ int enterlevel(unsigned char g)
     // and texture precaching consumes physical pages that starve malloc.
     if(ud.recstat != 2)
     {
-        music_select = (ud.volume_number*11) + ud.level_number;
+        music_select = (ud.volume_number >= 4) ? (rand() % 44)
+                     : (ud.volume_number*11) + ud.level_number;
 #ifdef _XBOX
         xbox_log("enterlevel: playmusic select=%d\n", music_select);
 #endif

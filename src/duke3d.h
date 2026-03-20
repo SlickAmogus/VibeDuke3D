@@ -513,7 +513,7 @@ extern unsigned char soundpr[NUM_SOUNDS],soundm[NUM_SOUNDS];
 extern int soundsiz[NUM_SOUNDS];
 extern char level_names[44][33];
 extern int partime[44],designertime[44];
-extern char volume_names[4][33];
+extern char volume_names[5][33];
 extern char skill_names[5][33];
 extern char level_file_names[44][128];
 

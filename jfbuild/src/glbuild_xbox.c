@@ -166,6 +166,19 @@ static int gpu_pool_free(void *addr, int size) {
 	return 0;  // pool full, caller should MmFree
 }
 
+/* Flush all cached blocks back to the system.  Called when
+ * MmAllocateContiguousMemory fails — the pool may be hoarding
+ * memory in size classes that don't match the requested size. */
+static void gpu_pool_flush(void) {
+	for (int c = 0; c < GPU_POOL_CLASSES; c++) {
+		for (int i = 0; i < gpu_mem_pool[c].count; i++) {
+			MmFreeContiguousMemory(gpu_mem_pool[c].blocks[i]);
+		}
+		gpu_mem_pool[c].count = 0;
+	}
+	gpu_pool_bytes = 0;
+}
+
 // Free list for recycling texture IDs deleted via glDeleteTextures.
 // Only explicitly-deleted IDs go here (not LRU-evicted ones), because
 // pt_unload also clears the polymosttex glpic references — making reuse safe.
@@ -1003,8 +1016,11 @@ static void APIENTRY xbox_glTexImage2D(GLenum target, GLint level, GLint ifmt,
 	int alloc_size = aw * ah * 4;
 
 	// Proactive LRU eviction: keep texture memory under budget to avoid
-	// exhausting heap memory (which causes calloc failures and corruption)
+	// exhausting heap memory (which causes calloc failures and corruption).
+	// Flush pool first — pooled memory counts against real system memory
+	// even though total_texture_bytes doesn't track it.
 	if (!tex->allocated && total_texture_bytes + alloc_size > TEX_BUDGET_BYTES) {
+		if (gpu_pool_bytes > 0) gpu_pool_flush();
 		pb_reset();
 		// Wait for GPU 3D pipeline to fully idle before freeing texture memory.
 		// pb_reset() only waits for the DMA engine; the texture fetch units may
@@ -1048,7 +1064,13 @@ static void APIENTRY xbox_glTexImage2D(GLenum target, GLint level, GLint ifmt,
 		if (!tex->addr)
 			tex->addr = MmAllocateContiguousMemoryEx(alloc_size, 0, MAXRAM, 0,
 				PAGE_READWRITE | PAGE_WRITECOMBINE);
-		// LRU eviction: if allocation fails, free the least-recently-used textures
+		if (!tex->addr) {
+			/* Pool may be hoarding memory in wrong size classes — flush and retry */
+			gpu_pool_flush();
+			tex->addr = MmAllocateContiguousMemoryEx(alloc_size, 0, MAXRAM, 0,
+				PAGE_READWRITE | PAGE_WRITECOMBINE);
+		}
+		// LRU eviction: if allocation STILL fails, free the least-recently-used textures
 		if (!tex->addr) {
 			// Sync GPU before freeing any texture memory — ensures no pending
 			// draw commands reference textures we're about to free
