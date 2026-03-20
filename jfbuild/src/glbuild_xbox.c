@@ -128,6 +128,44 @@ static int xbox_tex_alloc_failed = 0;  // set when MmAllocateContiguous fails (s
 static int xbox_tex_alloc_fail_count = 0;  // throttle alloc failure logging per level
 #define TEX_BUDGET_BYTES (8 * 1024 * 1024)  // proactive eviction threshold
 
+// GPU memory pool: freed texture allocations are cached for reuse instead of
+// returned to MmFreeContiguousMemory.  This prevents contiguous memory
+// fragmentation that causes audio death and texture corruption after many
+// level transitions.  Indexed by log2(alloc_size) for O(1) lookup.
+#define GPU_POOL_CLASSES 24  // covers 1B to 8MB (log2 0-23)
+#define GPU_POOL_DEPTH   64  // max cached blocks per size class
+static struct {
+	void *blocks[GPU_POOL_DEPTH];
+	int count;
+} gpu_mem_pool[GPU_POOL_CLASSES];
+static int gpu_pool_bytes = 0;  // total bytes held in pool
+
+static int ilog2(int v) {
+	int r = 0;
+	while (v > 1) { v >>= 1; r++; }
+	return r;
+}
+
+static void *gpu_pool_alloc(int size) {
+	int cls = ilog2(size);
+	if (cls >= 0 && cls < GPU_POOL_CLASSES && gpu_mem_pool[cls].count > 0) {
+		gpu_mem_pool[cls].count--;
+		gpu_pool_bytes -= size;
+		return gpu_mem_pool[cls].blocks[gpu_mem_pool[cls].count];
+	}
+	return NULL;  // no cached block available
+}
+
+static int gpu_pool_free(void *addr, int size) {
+	int cls = ilog2(size);
+	if (cls >= 0 && cls < GPU_POOL_CLASSES && gpu_mem_pool[cls].count < GPU_POOL_DEPTH) {
+		gpu_mem_pool[cls].blocks[gpu_mem_pool[cls].count++] = addr;
+		gpu_pool_bytes += size;
+		return 1;  // cached
+	}
+	return 0;  // pool full, caller should MmFree
+}
+
 // Free list for recycling texture IDs deleted via glDeleteTextures.
 // Only explicitly-deleted IDs go here (not LRU-evicted ones), because
 // pt_unload also clears the polymosttex glpic references — making reuse safe.
@@ -890,7 +928,10 @@ static void APIENTRY xbox_glDeleteTextures(GLsizei n, const GLuint *textures)
 		if (id > 0 && id < MAX_TEXTURES) {
 			if (texture_table[id].allocated && texture_table[id].addr) {
 				total_texture_bytes -= texture_table[id].alloc_size;
-				MmFreeContiguousMemory(texture_table[id].addr);
+				/* Pool the GPU memory for reuse instead of freeing it.
+				 * This prevents contiguous memory fragmentation. */
+				if (!gpu_pool_free(texture_table[id].addr, texture_table[id].alloc_size))
+					MmFreeContiguousMemory(texture_table[id].addr);
 			}
 			memset(&texture_table[id], 0, sizeof(texture_table[id]));
 			// Recycle this ID for future glGenTextures calls.
@@ -942,7 +983,8 @@ static void APIENTRY xbox_glTexImage2D(GLenum target, GLint level, GLint ifmt,
 	// Free previous allocation if sizes differ
 	if (tex->allocated && tex->addr && (tex->width != w || tex->height != h)) {
 		total_texture_bytes -= tex->alloc_size;
-		MmFreeContiguousMemory(tex->addr);
+		if (!gpu_pool_free(tex->addr, tex->alloc_size))
+			MmFreeContiguousMemory(tex->addr);
 		tex->addr = NULL;
 		tex->allocated = 0;
 		tex->alloc_size = 0;
@@ -988,7 +1030,8 @@ static void APIENTRY xbox_glTexImage2D(GLenum target, GLint level, GLint ifmt,
 			}
 			if (lru_id < 0) break;
 			total_texture_bytes -= texture_table[lru_id].alloc_size;
-			MmFreeContiguousMemory(texture_table[lru_id].addr);
+			if (!gpu_pool_free(texture_table[lru_id].addr, texture_table[lru_id].alloc_size))
+				MmFreeContiguousMemory(texture_table[lru_id].addr);
 			texture_table[lru_id].addr = NULL;
 			texture_table[lru_id].allocated = 0;
 			proactive_evicted++;
@@ -1000,8 +1043,11 @@ static void APIENTRY xbox_glTexImage2D(GLenum target, GLint level, GLint ifmt,
 	}
 
 	if (!tex->allocated) {
-		tex->addr = MmAllocateContiguousMemoryEx(alloc_size, 0, MAXRAM, 0,
-			PAGE_READWRITE | PAGE_WRITECOMBINE);
+		/* Try the GPU memory pool first to avoid fragmentation */
+		tex->addr = gpu_pool_alloc(alloc_size);
+		if (!tex->addr)
+			tex->addr = MmAllocateContiguousMemoryEx(alloc_size, 0, MAXRAM, 0,
+				PAGE_READWRITE | PAGE_WRITECOMBINE);
 		// LRU eviction: if allocation fails, free the least-recently-used textures
 		if (!tex->addr) {
 			// Sync GPU before freeing any texture memory — ensures no pending
@@ -1031,15 +1077,18 @@ static void APIENTRY xbox_glTexImage2D(GLenum target, GLint level, GLint ifmt,
 					}
 				}
 				if (lru_id < 0) break; // nothing to evict
-				// Evict the LRU texture
+				// Evict the LRU texture — try pool first, then real free
 				total_texture_bytes -= texture_table[lru_id].alloc_size;
-				MmFreeContiguousMemory(texture_table[lru_id].addr);
+				if (!gpu_pool_free(texture_table[lru_id].addr, texture_table[lru_id].alloc_size))
+					MmFreeContiguousMemory(texture_table[lru_id].addr);
 				texture_table[lru_id].addr = NULL;
 				texture_table[lru_id].allocated = 0;
 				evicted++;
-				// Retry allocation
-				tex->addr = MmAllocateContiguousMemoryEx(alloc_size, 0, MAXRAM, 0,
-					PAGE_READWRITE | PAGE_WRITECOMBINE);
+				// Retry allocation — pool first, then system
+				tex->addr = gpu_pool_alloc(alloc_size);
+				if (!tex->addr)
+					tex->addr = MmAllocateContiguousMemoryEx(alloc_size, 0, MAXRAM, 0,
+						PAGE_READWRITE | PAGE_WRITECOMBINE);
 			}
 			if (0) { /* tex eviction logging disabled */
 				xbox_log("Xbox: tex evicted %d LRU textures to alloc %dx%d (%d bytes), result=%p total=%d\n",
