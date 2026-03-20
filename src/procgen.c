@@ -26,12 +26,24 @@
 #define PG_FLOOR_PIC     183    /* SLIME tile */
 #define PG_CEIL_PIC      126    /* generic ceiling */
 
-/* Enemy / pickup picnums */
+/* Enemy / pickup / weapon / decoration picnums */
 #define PG_ENEMIES_COUNT 2
 static const short pg_enemies[PG_ENEMIES_COUNT] = { LIZTROOP, PIGCOP };
 
-#define PG_PICKUPS_COUNT 4
-static const short pg_pickups[PG_PICKUPS_COUNT] = { COLA, SIXPAK, SHOTGUNAMMO, FIRSTAID };
+#define PG_PICKUPS_COUNT 6
+static const short pg_pickups[PG_PICKUPS_COUNT] = {
+    COLA, SIXPAK, FIRSTAID, SHOTGUNAMMO, RPGAMMO, FREEZEAMMO
+};
+
+#define PG_WEAPONS_COUNT 5
+static const short pg_weapons[PG_WEAPONS_COUNT] = {
+    CHAINGUNSPRITE, RPGSPRITE, SHOTGUNSPRITE, FREEZESPRITE, SHRINKERSPRITE
+};
+
+#define PG_DECOR_COUNT 5
+static const short pg_decor[PG_DECOR_COUNT] = {
+    WATERFOUNTAIN, RUBBERCAN, CANWITHSOMETHING, EXPLODINGBARREL, HYDRENT
+};
 
 /* --- Room data --- */
 typedef struct {
@@ -54,7 +66,9 @@ static pgbarrier_t pg_barriers[PG_MAX_BARRIERS];
 static int pg_num_barriers = 0;
 static pgroom_t pg_rooms_saved[PG_MAX_ROOMS];
 static int pg_num_rooms_saved = 0;
-static int pg_active = 0;  /* 1 when a procgen level is loaded */
+static int pg_active = 0;       /* 1 when a procgen level is loaded */
+static int pg_tick_count = 0;   /* ticks since level start */
+static int pg_enemy_counts[PG_MAX_ROOMS]; /* initial enemy count per room */
 
 /* --- Globals for construction --- */
 static int pg_nsect, pg_nwall, pg_nsprite;
@@ -410,8 +424,10 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
                   APLAYER, rooms[0].sect_idx, 1536);
 
     /* Enemies in rooms 1..N-1 */
+    memset(pg_enemy_counts, 0, sizeof(pg_enemy_counts));
     for (i = 1; i < num_rooms; i++) {
         int n_enemies = 2 + (rand() % 4);  /* 2-5 */
+        pg_enemy_counts[i] = n_enemies;
         for (int e = 0; e < n_enemies; e++) {
             int ex = pg_rand_range(rooms[i].x0 + 512, rooms[i].x1 - 512);
             int ey = pg_rand_range(rooms[i].y0 + 512, rooms[i].y1 - 512);
@@ -421,9 +437,9 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
         }
     }
 
-    /* Pickups in every other room */
-    for (i = 0; i < num_rooms; i += 2) {
-        int n_items = 1 + (rand() % 3);
+    /* Pickups scattered in most rooms */
+    for (i = 0; i < num_rooms; i++) {
+        int n_items = 2 + (rand() % 3);  /* 2-4 per room */
         for (int p = 0; p < n_items; p++) {
             int px = pg_rand_range(rooms[i].x0 + 512, rooms[i].x1 - 512);
             int py = pg_rand_range(rooms[i].y0 + 512, rooms[i].y1 - 512);
@@ -433,30 +449,55 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
         }
     }
 
-    /* Barriers in each connector — block passage until room is cleared */
+    /* Weapons: one random weapon per room (starting from room 1) */
+    for (i = 1; i < num_rooms; i++) {
+        int wx = pg_rand_range(rooms[i].x0 + 1024, rooms[i].x1 - 1024);
+        int wy = pg_rand_range(rooms[i].y0 + 1024, rooms[i].y1 - 1024);
+        short wpic = pg_weapons[rand() % PG_WEAPONS_COUNT];
+        pg_add_sprite(wx, wy, PG_FLOOR_Z, wpic,
+                      rooms[i].sect_idx, 0);
+    }
+
+    /* Decorations: 1-3 per room in corners and edges */
+    for (i = 0; i < num_rooms; i++) {
+        int n_decor = 1 + (rand() % 3);
+        for (int d = 0; d < n_decor; d++) {
+            /* Place near walls (within 768 units of edges) */
+            int dx, dy;
+            int edge = rand() % 4;
+            switch (edge) {
+                case 0: /* north wall */
+                    dx = pg_rand_range(rooms[i].x0 + 512, rooms[i].x1 - 512);
+                    dy = rooms[i].y0 + 384;
+                    break;
+                case 1: /* south wall */
+                    dx = pg_rand_range(rooms[i].x0 + 512, rooms[i].x1 - 512);
+                    dy = rooms[i].y1 - 384;
+                    break;
+                case 2: /* east wall */
+                    dx = rooms[i].x1 - 384;
+                    dy = pg_rand_range(rooms[i].y0 + 512, rooms[i].y1 - 512);
+                    break;
+                default: /* west wall */
+                    dx = rooms[i].x0 + 384;
+                    dy = pg_rand_range(rooms[i].y0 + 512, rooms[i].y1 - 512);
+                    break;
+            }
+            short dpic = pg_decor[rand() % PG_DECOR_COUNT];
+            pg_add_sprite(dx, dy, PG_FLOOR_Z, dpic,
+                          rooms[i].sect_idx, rand() & 2047);
+        }
+    }
+
+    /* Barriers: close each connector's ceiling to the floor.
+     * When all enemies in the next room are dead, raise the ceiling. */
     pg_num_barriers = 0;
     for (i = 0; i < num_rooms - 1; i++) {
         int cs = conn_sect[i];
-        int bx, by, bang;
-        /* Place barrier in center of connector, oriented across it */
-        if (i % 2 == 0) {
-            /* East-west connector */
-            bx = rooms[i].x1 + PG_HALL_LEN / 2;
-            by = (rooms[i].door_y0 + rooms[i].door_y1) / 2;
-            bang = 512;  /* face north (across east-west corridor) */
-        } else {
-            /* North-south connector */
-            bx = (rooms[i].door_x0 + rooms[i].door_x1) / 2;
-            by = rooms[i].y1 + PG_HALL_LEN / 2;
-            bang = 0;    /* face east (across north-south corridor) */
-        }
-        int bi = pg_add_sprite(bx, by, PG_CEIL_Z / 2, BIGFORCE, cs, bang);
-        sprite[bi].xrepeat = 64;
-        sprite[bi].yrepeat = 64;
-        sprite[bi].cstat = 1 | 64;  /* blocking + one-sided (wall sprite) */
+        sector[cs].ceilingz = sector[cs].floorz;  /* crushed shut */
 
-        pg_barriers[pg_num_barriers].barrier_sprite = bi;
-        pg_barriers[pg_num_barriers].room_idx = i + 1;  /* guard next room */
+        pg_barriers[pg_num_barriers].barrier_sprite = cs;  /* reuse field as sector idx */
+        pg_barriers[pg_num_barriers].room_idx = i + 1;
         pg_barriers[pg_num_barriers].active = 1;
         pg_num_barriers++;
     }
@@ -466,16 +507,20 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
     for (i = 0; i < num_rooms; i++)
         pg_rooms_saved[i] = rooms[i];
     pg_active = 1;
+    pg_tick_count = 0;
 
-    /* Exit nuke button in last room — place near north wall, facing south */
+    /* Exit nuke button in last room — centered, on the wall */
     {
         int last = num_rooms - 1;
+        /* Place on the far wall of the last room so the player walks toward it */
         int nx = rooms[last].cx;
-        int ny = rooms[last].y0 + 256;
-        int si = pg_add_sprite(nx, ny, PG_FLOOR_Z - (32 << 8),
+        int ny = rooms[last].y0 + 384;  /* near north wall */
+        int si = pg_add_sprite(nx, ny, PG_FLOOR_Z - (40 << 8),
                                NUKEBUTTON, rooms[last].sect_idx, 1536);
         sprite[si].lotag = 65535;  /* non-zero so neartag finds it */
-        sprite[si].cstat = 0;     /* face sprite */
+        sprite[si].cstat = 16;    /* wall-aligned sprite */
+        sprite[si].xrepeat = 32;
+        sprite[si].yrepeat = 32;
     }
 
     /* Register all sprites in engine linked lists */
@@ -496,11 +541,16 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
     return 0;
 }
 
-/* --- Barrier tick: remove barriers when room enemies are dead --- */
+/* --- Barrier tick: open connectors when room enemies are dead --- */
 void procgen_tick(void)
 {
     int b, i;
     if (!pg_active) return;
+
+    pg_tick_count++;
+    /* Grace period: don't check barriers for 120 ticks (~4 seconds)
+     * to let spawn() fully initialize all enemies. */
+    if (pg_tick_count < 120) return;
 
     for (b = 0; b < pg_num_barriers; b++) {
         if (!pg_barriers[b].active) continue;
@@ -508,20 +558,21 @@ void procgen_tick(void)
         int room = pg_barriers[b].room_idx;
         if (room < 0 || room >= pg_num_rooms_saved) continue;
 
+        /* Count alive enemies in the room sector.
+         * Enemies are in statnum 1 (actor list) when alive. */
         int rsect = pg_rooms_saved[room].sect_idx;
-
-        /* Count alive enemies in this room's sector */
         int alive = 0;
+
         for (i = headspritesect[rsect]; i >= 0; i = nextspritesect[i]) {
-            if (sprite[i].picnum >= LIZTROOP && sprite[i].picnum <= LIZTROOP+30) { alive++; continue; }
-            if (sprite[i].picnum >= PIGCOP && sprite[i].picnum <= PIGCOP+30) { alive++; continue; }
+            if (sprite[i].statnum == 1) alive++;
         }
 
         if (alive == 0) {
-            /* All enemies dead — remove barrier */
-            int si = pg_barriers[b].barrier_sprite;
-            if (si >= 0 && sprite[si].picnum == BIGFORCE) {
-                deletesprite(si);
+            /* All enemies dead — raise connector ceiling to open passage */
+            int cs = pg_barriers[b].barrier_sprite;  /* connector sector idx */
+            if (sector[cs].ceilingz >= sector[cs].floorz) {
+                sector[cs].ceilingz = PG_CEIL_Z;
+                sound(ELEVATOR_ON);
             }
             pg_barriers[b].active = 0;
         }
