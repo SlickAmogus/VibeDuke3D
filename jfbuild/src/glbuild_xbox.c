@@ -656,19 +656,37 @@ static void APIENTRY xbox_glClear(GLbitfield mask)
 			(int)(gl_state.clear_b * 255), viewport_set_count);
 	}
 
-	// Clear depth+stencil, then color.
-	pb_set_depth_stencil_buffer_region(
-		NV097_SET_SURFACE_FORMAT_ZETA_Z24S8,
-		0xFFFFFF, 0x00, // depth=max, stencil=0
-		0, 0, screen_width, screen_height);
+	/* Respect the current viewport for clears — polymost sets glViewport
+	 * to the game window area before glClear, so the border area drawn by
+	 * drawbackground() is preserved.  Fall back to full screen if no
+	 * viewport has been set or if it covers the entire screen. */
+	{
+		int cx = 0, cy = 0, cw = screen_width, ch = screen_height;
+		if (vp_valid && ((int)vp_w < screen_width || (int)vp_h < screen_height)) {
+			cx = (int)vp_x;
+			/* OpenGL viewport Y is bottom-up; convert to top-down for NV2A */
+			cy = screen_height - (int)vp_y - (int)vp_h;
+			cw = (int)vp_w;
+			ch = (int)vp_h;
+			if (cx < 0) cx = 0;
+			if (cy < 0) cy = 0;
+			if (cx + cw > screen_width) cw = screen_width - cx;
+			if (cy + ch > screen_height) ch = screen_height - cy;
+		}
 
-	if (mask & GL_COLOR_BUFFER_BIT) {
-		unsigned char cr = (unsigned char)(gl_state.clear_r * 255.0f);
-		unsigned char cg = (unsigned char)(gl_state.clear_g * 255.0f);
-		unsigned char cb = (unsigned char)(gl_state.clear_b * 255.0f);
-		unsigned char ca = (unsigned char)(gl_state.clear_a * 255.0f);
-		DWORD color = (ca << 24) | (cr << 16) | (cg << 8) | cb;
-		pb_fill(0, 0, screen_width, screen_height, color);
+		pb_set_depth_stencil_buffer_region(
+			NV097_SET_SURFACE_FORMAT_ZETA_Z24S8,
+			0xFFFFFF, 0x00,
+			cx, cy, cw, ch);
+
+		if (mask & GL_COLOR_BUFFER_BIT) {
+			unsigned char cr = (unsigned char)(gl_state.clear_r * 255.0f);
+			unsigned char cg = (unsigned char)(gl_state.clear_g * 255.0f);
+			unsigned char cb = (unsigned char)(gl_state.clear_b * 255.0f);
+			unsigned char ca = (unsigned char)(gl_state.clear_a * 255.0f);
+			DWORD color = (ca << 24) | (cr << 16) | (cg << 8) | cb;
+			pb_fill(cx, cy, cw, ch, color);
+		}
 	}
 
 	// Wait for clears to complete and reset push buffer before draws

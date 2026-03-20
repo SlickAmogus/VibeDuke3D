@@ -2858,8 +2858,7 @@ void drawbackground(void)
     y1 = 0; y2 = ydim;
     if( ready2send || (ps[myconnectindex].gm&MODE_GAME) || ud.recstat == 2 )
     {
-        /* In-game screen border uses MENUSCREEN instead of BIGHOLE */
-        dapicnum = MENUSCREEN;
+        /* dapicnum stays as BIGHOLE for in-game screen border */
         if(ud.coop != 1)
         {
             if (ud.multimode > 1) y1 += tilesizy[FRAGBAR];
