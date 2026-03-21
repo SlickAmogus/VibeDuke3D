@@ -113,7 +113,8 @@ GAME_SRCS = \
 	$(CURDIR)/$(GAMESRC)/osdfuncs.c \
 	$(CURDIR)/$(GAMESRC)/osdcmds.c \
 	$(CURDIR)/$(GAMESRC)/version.c \
-	$(CURDIR)/$(GAMESRC)/procgen.c
+	$(CURDIR)/$(GAMESRC)/procgen.c \
+	$(CURDIR)/$(GAMESRC)/weapwheel.c
 
 # --- MACT input library -----------------------------------------------------
 MACT_SRCS = \

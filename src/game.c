@@ -2599,6 +2599,14 @@ void displayrest(int smoothratio)
             moveclouds();
         }
 
+#ifdef _XBOX
+        /* Weapon wheel overlay — drawn on top of everything */
+        {
+            extern void weapwheel_draw(void);
+            weapwheel_draw();
+        }
+#endif
+
         if( ud.overhead_on > 0 )
         {
                 smoothratio = min(max(smoothratio,0),65536);
@@ -8795,6 +8803,11 @@ if (!VOLUMEALL) {
 
         cheats();
 #ifdef _XBOX
+        /* Weapon wheel: update before other input processing */
+        if (ps[myconnectindex].gm & MODE_GAME) {
+            extern void weapwheel_update(void);
+            weapwheel_update();
+        }
         xbox_cheats();
         /* Music watchdog: restart music if it died unexpectedly */
         if (ps[myconnectindex].gm & MODE_GAME) {

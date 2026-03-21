@@ -1914,7 +1914,13 @@ void getinput(short snum)
     p = &ps[snum];
 
     {
-        int blocked = (p->gm&MODE_MENU) || (p->gm&MODE_TYPE) ||
+#ifdef _XBOX
+        extern int weapwheel_active(void);
+        int ww_block = weapwheel_active();
+#else
+        int ww_block = 0;
+#endif
+        int blocked = ww_block || (p->gm&MODE_MENU) || (p->gm&MODE_TYPE) ||
                       (ud.pause_on && !KB_KeyPressed(sc_Pause));
         if (blocked) {
             CONTROL_GetInput( &info );
@@ -2008,6 +2014,16 @@ void getinput(short snum)
         j = 11;
     if (BUTTON(gamefunc_Next_Weapon))
         j = 12;
+#ifdef _XBOX
+    /* Suppress weapon cycling while Black/White are held — the weapon
+     * wheel system handles all weapon switching for these buttons.
+     * Short taps are handled by weapwheel_update on release. */
+    {
+        extern int joyb;
+        if ((joyb & ((1<<9) | (1<<10))) && (j == 11 || j == 12))
+            j = 0;
+    }
+#endif
 
 if (!VOLUMEONE) {
     if (BUTTON(gamefunc_Weapon_7))
