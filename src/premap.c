@@ -1738,6 +1738,12 @@ int enterlevel(unsigned char g)
 
     prelevel(g);
 
+    /* Procedural mode: hide rooms 2+ enemies after prelevel initialized them */
+    if (ud.volume_number == 4) {
+        extern void procgen_post_prelevel(void);
+        procgen_post_prelevel();
+    }
+
     allignwarpelevators();
     resetpspritevars(g);
 

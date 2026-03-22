@@ -68,7 +68,20 @@ static pgroom_t pg_rooms_saved[PG_MAX_ROOMS];
 static int pg_num_rooms_saved = 0;
 static int pg_active = 0;       /* 1 when a procgen level is loaded */
 static int pg_tick_count = 0;   /* ticks since level start */
-static int pg_enemy_counts[PG_MAX_ROOMS]; /* initial enemy count per room */
+static int pg_current_room = 1; /* which room's enemies are currently alive */
+static int pg_enemies_spawned = 0; /* have enemies for current room been spawned? */
+
+/* Enemy data per room — stored during generation, activated room-by-room */
+#define PG_MAX_ROOM_ENEMIES 8
+typedef struct {
+    int count;
+    struct {
+        int x, y;
+        short picnum;
+        short sprite_idx;  /* engine sprite index (set after insertsprite) */
+    } e[PG_MAX_ROOM_ENEMIES];
+} pg_room_enemies_t;
+static pg_room_enemies_t pg_room_enemies[PG_MAX_ROOMS];
 
 /* --- Globals for construction --- */
 static int pg_nsect, pg_nwall, pg_nsprite;
@@ -423,18 +436,28 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
     pg_add_sprite(rooms[0].cx, rooms[0].cy, PG_FLOOR_Z,
                   APLAYER, rooms[0].sect_idx, 1536);
 
-    /* Enemies in rooms 1..N-1 */
-    memset(pg_enemy_counts, 0, sizeof(pg_enemy_counts));
+    /* Room 1: place enemies during generation (prelevel/spawn initializes them).
+     * Rooms 2+: only STORE enemy data — they'll be created at runtime when
+     * the room activates, so they don't exist, make sounds, or fight until then. */
+    memset(pg_room_enemies, 0, sizeof(pg_room_enemies));
     for (i = 1; i < num_rooms; i++) {
         int n_enemies = 2 + (rand() % 4);  /* 2-5 */
-        pg_enemy_counts[i] = n_enemies;
+        if (n_enemies > PG_MAX_ROOM_ENEMIES) n_enemies = PG_MAX_ROOM_ENEMIES;
+        pg_room_enemies[i].count = n_enemies;
         for (int e = 0; e < n_enemies; e++) {
-            int ex = pg_rand_range(rooms[i].x0 + 512, rooms[i].x1 - 512);
-            int ey = pg_rand_range(rooms[i].y0 + 512, rooms[i].y1 - 512);
-            short epic = pg_enemies[rand() % PG_ENEMIES_COUNT];
-            pg_add_sprite(ex, ey, PG_FLOOR_Z, epic,
-                          rooms[i].sect_idx, rand() & 2047);
+            pg_room_enemies[i].e[e].x = pg_rand_range(rooms[i].x0 + 512, rooms[i].x1 - 512);
+            pg_room_enemies[i].e[e].y = pg_rand_range(rooms[i].y0 + 512, rooms[i].y1 - 512);
+            pg_room_enemies[i].e[e].picnum = pg_enemies[rand() % PG_ENEMIES_COUNT];
+            pg_room_enemies[i].e[e].sprite_idx = -1;  /* not yet created */
         }
+    }
+
+    /* Only room 1 enemies are placed as actual sprites */
+    for (i = 0; i < pg_room_enemies[1].count; i++) {
+        int si = pg_add_sprite(pg_room_enemies[1].e[i].x, pg_room_enemies[1].e[i].y,
+                      PG_FLOOR_Z, pg_room_enemies[1].e[i].picnum,
+                      rooms[1].sect_idx, rand() & 2047);
+        pg_room_enemies[1].e[i].sprite_idx = si;
     }
 
     /* Pickups scattered in most rooms */
@@ -484,21 +507,32 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
                     break;
             }
             short dpic = pg_decor[rand() % PG_DECOR_COUNT];
-            pg_add_sprite(dx, dy, PG_FLOOR_Z, dpic,
+            int di = pg_add_sprite(dx, dy, PG_FLOOR_Z, dpic,
                           rooms[i].sect_idx, rand() & 2047);
+            /* Decorations need explicit repeat values — spawn() doesn't
+             * always set them for non-enemy sprites. */
+            sprite[di].xrepeat = 32;
+            sprite[di].yrepeat = 32;
         }
     }
 
     /* Barriers: close each connector's ceiling to the floor.
-     * When all enemies in the next room are dead, raise the ceiling. */
+     * Room 0→1 connector stays OPEN (spawn room has no enemies).
+     * Rooms 1→2, 2→3, etc. are crushed shut until cleared. */
     pg_num_barriers = 0;
     for (i = 0; i < num_rooms - 1; i++) {
         int cs = conn_sect[i];
-        sector[cs].ceilingz = sector[cs].floorz;  /* crushed shut */
-
-        pg_barriers[pg_num_barriers].barrier_sprite = cs;  /* reuse field as sector idx */
-        pg_barriers[pg_num_barriers].room_idx = i + 1;
-        pg_barriers[pg_num_barriers].active = 1;
+        if (i == 0) {
+            /* First connector (room 0→1) stays open */
+            pg_barriers[pg_num_barriers].barrier_sprite = cs;
+            pg_barriers[pg_num_barriers].room_idx = 1;
+            pg_barriers[pg_num_barriers].active = 0;  /* already open */
+        } else {
+            sector[cs].ceilingz = sector[cs].floorz;  /* crushed shut */
+            pg_barriers[pg_num_barriers].barrier_sprite = cs;
+            pg_barriers[pg_num_barriers].room_idx = i + 1;
+            pg_barriers[pg_num_barriers].active = 1;
+        }
         pg_num_barriers++;
     }
 
@@ -508,6 +542,8 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
         pg_rooms_saved[i] = rooms[i];
     pg_active = 1;
     pg_tick_count = 0;
+    pg_current_room = 1;
+    pg_enemies_spawned = 1;  /* room 1 enemies already spawned above */
 
     /* Exit nuke button in last room — centered, on the wall */
     {
@@ -541,40 +577,95 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
     return 0;
 }
 
-/* --- Barrier tick: open connectors when room enemies are dead --- */
+/* Create enemies for a room at runtime using insertsprite + spawn.
+ * Enemies don't exist until this is called — no sounds, no AI, nothing. */
+static void pg_activate_room_enemies(int room)
+{
+    int e;
+    if (room < 1 || room >= pg_num_rooms_saved) return;
+
+    int sect = pg_rooms_saved[room].sect_idx;
+    int floorz = sector[sect].floorz;
+
+    for (e = 0; e < pg_room_enemies[room].count; e++) {
+        int si = insertsprite(sect, 0);
+        if (si < 0) continue;
+
+        sprite[si].x = pg_room_enemies[room].e[e].x;
+        sprite[si].y = pg_room_enemies[room].e[e].y;
+        sprite[si].z = floorz;
+        sprite[si].picnum = pg_room_enemies[room].e[e].picnum;
+        sprite[si].cstat = 0;
+        sprite[si].shade = 0;
+        sprite[si].pal = 0;
+        sprite[si].clipdist = 0;
+        sprite[si].xrepeat = 0;
+        sprite[si].yrepeat = 0;
+        sprite[si].xoffset = 0;
+        sprite[si].yoffset = 0;
+        sprite[si].ang = rand() & 2047;
+        sprite[si].owner = si;
+        sprite[si].xvel = 0;
+        sprite[si].yvel = 0;
+        sprite[si].zvel = 0;
+        sprite[si].lotag = 0;
+        sprite[si].hitag = 0;
+        sprite[si].extra = -1;
+
+        /* spawn() fully initializes: health, AI, xrepeat/yrepeat, statnum→1 */
+        spawn(-1, si);
+        pg_room_enemies[room].e[e].sprite_idx = si;
+
+        /* Teleport sound at spawn position */
+        spritesound(TELEPORTER, si);
+    }
+}
+
+/* No-op: rooms 2+ have no sprites placed during generation */
+void procgen_post_prelevel(void) { }
+
+/* --- Barrier tick: sequential room-by-room progression --- */
 void procgen_tick(void)
 {
-    int b, i;
+    int i;
     if (!pg_active) return;
 
     pg_tick_count++;
-    /* Grace period: don't check barriers for 120 ticks (~4 seconds)
-     * to let spawn() fully initialize all enemies. */
-    if (pg_tick_count < 120) return;
+    /* Grace period after level start or room spawn */
+    if (pg_tick_count < 90) return;
 
-    for (b = 0; b < pg_num_barriers; b++) {
-        if (!pg_barriers[b].active) continue;
+    /* Check if current room is cleared (no actors in statnum 1
+     * within the room's bounding box) */
+    if (pg_current_room >= pg_num_rooms_saved) return;
 
-        int room = pg_barriers[b].room_idx;
-        if (room < 0 || room >= pg_num_rooms_saved) continue;
+    /* Check if all tracked enemies for this room are dead.
+     * Enemies are in statnum 2 (actors) with health in sprite[si].extra.
+     * Dead enemies have extra <= 0 or leave statnum 2. */
+    int alive = 0;
+    for (i = 0; i < pg_room_enemies[pg_current_room].count; i++) {
+        int si = pg_room_enemies[pg_current_room].e[i].sprite_idx;
+        if (si >= 0 && sprite[si].statnum >= 1 && sprite[si].statnum <= 2
+            && sprite[si].extra > 0)
+            alive++;
+    }
 
-        /* Count alive enemies in the room sector.
-         * Enemies are in statnum 1 (actor list) when alive. */
-        int rsect = pg_rooms_saved[room].sect_idx;
-        int alive = 0;
-
-        for (i = headspritesect[rsect]; i >= 0; i = nextspritesect[i]) {
-            if (sprite[i].statnum == 1) alive++;
-        }
-
-        if (alive == 0) {
-            /* All enemies dead — raise connector ceiling to open passage */
-            int cs = pg_barriers[b].barrier_sprite;  /* connector sector idx */
+    if (alive == 0) {
+        /* Room cleared — open the barrier AFTER this room (to the next room) */
+        int b = pg_current_room;  /* barrier i = connector between room i and room i+1 */
+        if (b >= 0 && b < pg_num_barriers && pg_barriers[b].active) {
+            int cs = pg_barriers[b].barrier_sprite;
             if (sector[cs].ceilingz >= sector[cs].floorz) {
                 sector[cs].ceilingz = PG_CEIL_Z;
                 sound(ELEVATOR_ON);
             }
             pg_barriers[b].active = 0;
+        }
+
+        /* Advance to next room and create its enemies */
+        pg_current_room++;
+        if (pg_current_room < pg_num_rooms_saved) {
+            pg_activate_room_enemies(pg_current_room);
+            pg_tick_count = 0;  /* reset grace period for new room */
         }
     }
 }

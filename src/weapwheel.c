@@ -91,6 +91,9 @@ void weapwheel_update(void)
             ww_open = 1;
             ww_selected = -1;
             ww_confirmed = 0;
+            /* Freeze game world in single player */
+            if (ud.multimode < 2)
+                ud.pause_on = 1;
         }
 
         if (ww_open) {
@@ -122,6 +125,9 @@ void weapwheel_update(void)
             ww_open = 0;
             ww_selected = -1;
             ww_confirmed = 1;
+            /* Unfreeze game world */
+            if (ud.multimode < 2)
+                ud.pause_on = 0;
         } else if (ww_hold_count > 0 && ww_hold_count < WW_HOLD_FRAMES) {
             /* Short tap on release — do the weapon cycle now.
              * We suppressed the cycle during the hold, so handle it here. */
@@ -162,10 +168,17 @@ void weapwheel_draw(void)
 
     /* Fullscreen black translucent overlay using BLANK tile */
     {
-        /* Draw BLANK (tile 0, solid black) stretched across the full screen
-         * with translucency flag to let the game show through dimly. */
         rotatesprite(0, 0, 65536, 0, 0,
                      0, 0, 1+8+16+64, 0, 0, xdim-1, ydim-1);
+    }
+
+    /* Transparent NUKEBUTTON backdrop behind the weapon circle */
+    {
+        /* Scale to encompass the weapon circle (radius 56 + sprite size).
+         * NUKEBUTTON is small, so scale it up significantly. */
+        int bg_scale = 65536 + 32768;  /* ~1.5x zoom */
+        rotatesprite(WW_CENTER_X<<16, WW_CENTER_Y<<16, bg_scale, 0,
+                     NUKEBUTTON, 16, 0, 2+8+1, 0, 0, xdim-1, ydim-1);
     }
 
     /* Draw each weapon in a circle */

@@ -9,4 +9,7 @@ int procgen_generate_level(int *posx, int *posy, int *posz,
 /* Call each game tick — removes room barriers when all enemies are dead. */
 void procgen_tick(void);
 
+/* Call AFTER prelevel() to hide rooms 2+ enemies. */
+void procgen_post_prelevel(void);
+
 #endif

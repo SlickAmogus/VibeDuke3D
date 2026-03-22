@@ -2718,7 +2718,13 @@ void displayrest(int smoothratio)
         }
     }
 
+#ifdef _XBOX
+    { extern int weapwheel_active(void);
+    if(ps[myconnectindex].newowner == -1 && ud.overhead_on == 0 && ud.crosshair && ud.camerasprite == -1
+        && !weapwheel_active())
+#else
     if(ps[myconnectindex].newowner == -1 && ud.overhead_on == 0 && ud.crosshair && ud.camerasprite == -1)
+#endif
     {
         // Adjust crosshair Y to match hitscan aim point in polymost renderer.
         // Polymost uses perspective rotation while hitscan uses a linear model,
@@ -2737,14 +2743,20 @@ void displayrest(int smoothratio)
         long crosshair_y = (100L<<16) + scale(corr, xdimenscale, 2 * ydimen);
         rotatesprite((160-(ps[myconnectindex].look_ang>>1))<<16,crosshair_y,65536L,0,CROSSHAIR,0,0,2+1,windowx1,windowy1,windowx2,windowy2);
     }
+#ifdef _XBOX
+    }  /* close weapwheel_active extern block */
+#endif
 
     if(ps[myconnectindex].gm&MODE_TYPE)
         typemode();
     else
         menus();
 
-    if( ud.pause_on==1 && (ps[myconnectindex].gm&MODE_MENU) == 0 )
-        menutext(160,100,0,0,"GAME PAUSED");
+    if( ud.pause_on==1 && (ps[myconnectindex].gm&MODE_MENU) == 0 ) {
+        extern int weapwheel_active(void);
+        if (!weapwheel_active())
+            menutext(160,100,0,0,"GAME PAUSED");
+    }
 
 #if 0 // APU debug text disabled
 #ifdef _XBOX_APU
