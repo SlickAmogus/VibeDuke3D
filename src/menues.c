@@ -1860,7 +1860,7 @@ cheat_for_port_credits:
             rotatesprite(c<<16,28<<16,65536L,0,INGAMEDUKETHREEDEE,0,0,10,0,0,xdim-1,ydim-1);
             if (PLUTOPAK)   // JBF 20030804
                 rotatesprite((c+100)<<16,36<<16,65536L,0,PLUTOPAKSPRITE+2,(sintable[(totalclock<<4)&2047]>>11),0,2+8,0,0,xdim-1,ydim-1);
-            x = probekeys(c,67,16,7, (int[]){ sc_N, sc_O, sc_L, sc_H, sc_C, sc_M, sc_Q, 0 });
+            x = probekeys(c,67,16,7, (int[]){ sc_N, sc_O, sc_L, sc_M, sc_H, sc_C, sc_Q, 0 });
             if(x >= 0)
             {
                 if( ud.multimode > 1 && x == 0 && ud.recstat != 2)
@@ -1886,9 +1886,9 @@ cheat_for_port_credits:
                                 break;
                             cmenu(300);
                             break;
-                        case 3: KB_FlushKeyboardQueue();cmenu(400);break;
-                        case 4: cmenu(990);break;
-                        case 5: cmenu(800);break;  /* MULTIPLAYER */
+                        case 3: cmenu(800);break;  /* MULTIPLAYER */
+                        case 4: KB_FlushKeyboardQueue();cmenu(400);break;
+                        case 5: cmenu(990);break;
                         case 6: cmenu(500);break;
                     }
                 }
@@ -1920,11 +1920,11 @@ cheat_for_port_credits:
                 menutext(c,67+16+16,SHX(-4),1,"LOAD GAME");
             else menutext(c,67+16+16,SHX(-4),PHX(-4),"LOAD GAME");
 
-            menutext(c,67+16+16+16,SHX(-5),PHX(-5), VOLUMEALL ? "HELP" : "HOW TO ORDER");
+            menutext(c,67+16+16+16,SHX(-5),PHX(-5),"MULTIPLAYER");
 
-            menutext(c,67+16+16+16+16,SHX(-6),PHX(-6),"CREDITS");
+            menutext(c,67+16+16+16+16,SHX(-6),PHX(-6), VOLUMEALL ? "HELP" : "HOW TO ORDER");
 
-            menutext(c,67+16+16+16+16+16,SHX(-7),PHX(-7),"MULTIPLAYER");
+            menutext(c,67+16+16+16+16+16,SHX(-7),PHX(-7),"CREDITS");
 
             menutext(c,67+16+16+16+16+16+16,SHX(-8),PHX(-8),"QUIT");
 
