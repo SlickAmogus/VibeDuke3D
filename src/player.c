@@ -28,6 +28,7 @@ Modifications for JonoF's port by Jonathon Fowler (jf@jonof.id.au)
 // Savage Baggage Masters
 
 #include "duke3d.h"
+#include "rogue_save.h"
 
 //#define WITHMAPDUMPSLASH
 
@@ -2532,10 +2533,24 @@ void processinput(short snum)
         }
         if(p->fist_incs > 42)
         {
-            /* Procedural mode: end episode after one level */
+            /* Roguelite mode: hub ↔ gauntlet transitions */
             if(ud.volume_number == 4) {
-                ud.eog = 1;
-                ps[myconnectindex].gm = MODE_EOL;
+                if (ud.level_number == 0) {
+                    /* Hub → Gauntlet */
+                    ud.level_number = 1;
+                    ud.m_level_number = 1;
+                } else {
+                    /* Gauntlet complete → return to hub */
+                    /* rogue_save.h included at top */
+                    rogue_data.gauntlet_completions++;
+                    rogue_save();
+                    ud.level_number = 0;
+                    ud.m_level_number = 0;
+                }
+                ud.eog = 0;
+                { int ii; for(ii=connecthead;ii>=0;ii=connectpoint2[ii])
+                    ps[ii].gm = MODE_EOL; }
+                p->fist_incs = 0;
                 return;
             }
             if(p->buttonpalette && ud.from_bonus == 0)

@@ -62,7 +62,7 @@ char betaname[80];
 
 char level_names[44][33],level_file_names[44][128];
 int partime[44],designertime[44];
-char volume_names[5][33] = { "L.A. MELTDOWN", "LUNAR APOCALYPSE", "SHRAPNEL CITY", "", "PROCEDURAL" };
+char volume_names[5][33] = { "L.A. MELTDOWN", "LUNAR APOCALYPSE", "SHRAPNEL CITY", "", "ROGUELITE TEST" };
 char skill_names[5][33] = { "PIECE OF CAKE", "LET'S ROCK", "COME GET SOME", "DAMN I'M GOOD", "" };
 
 int soundsiz[NUM_SOUNDS];

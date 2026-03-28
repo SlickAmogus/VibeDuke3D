@@ -114,7 +114,8 @@ GAME_SRCS = \
 	$(CURDIR)/$(GAMESRC)/osdcmds.c \
 	$(CURDIR)/$(GAMESRC)/version.c \
 	$(CURDIR)/$(GAMESRC)/procgen.c \
-	$(CURDIR)/$(GAMESRC)/weapwheel.c
+	$(CURDIR)/$(GAMESRC)/weapwheel.c \
+	$(CURDIR)/$(GAMESRC)/rogue_save.c
 
 # --- MACT input library -----------------------------------------------------
 MACT_SRCS = \

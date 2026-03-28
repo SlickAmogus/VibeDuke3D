@@ -2669,8 +2669,10 @@ void displayrest(int smoothratio)
                         minitext(1,a-6,volume_names[ud.volume_number],0,2+8+16);
                     if (ud.volume_number < 4)
                         minitext(1,a,level_names[ud.volume_number*11 + ud.level_number],0,2+8+16);
+                    else if (ud.volume_number == 4 && ud.level_number == 0)
+                        minitext(1,a,"HUB WORLD",0,2+8+16);
                     else if (ud.volume_number == 4)
-                        minitext(1,a,"RANDOM LEVEL",0,2+8+16);
+                        minitext(1,a,"GAUNTLET",0,2+8+16);
                 }
         }
     }
@@ -8527,6 +8529,11 @@ int app_main(int argc, char const * const argv[])
 #ifdef _XBOX
     xbox_log("DUKE3D: post-startup\n");
 #endif
+    /* Load roguelite persistent save data */
+    {
+        extern int rogue_load(void);
+        rogue_load();
+    }
     buildputs("\n");
     if (NAM) {
         buildputs("NAM\n");
@@ -8775,7 +8782,8 @@ if (VOLUMEONE) {
 #ifdef _XBOX
                 xbox_log("Xbox: calling dobonus...\n");
 #endif
-                dobonus(0);
+                if (ud.volume_number != 4)
+                    dobonus(0);
 #ifdef _XBOX
                 xbox_log("Xbox: dobonus returned\n");
 #endif
@@ -9896,8 +9904,8 @@ char domovethings(void)
         doanimations();
         movefx();               //ST 11
 
-        /* Procedural mode: check if room barriers should be removed */
-        if (ud.volume_number == 4) {
+        /* Roguelite gauntlet: check if room barriers should be removed */
+        if (ud.volume_number == 4 && ud.level_number > 0) {
             extern void procgen_tick(void);
             procgen_tick();
         }

@@ -1938,6 +1938,7 @@ cheat_for_port_credits:
                     }
                     break;
                 case 1:
+                    if(ud.volume_number == 4) break;  /* no saves in roguelite */
                     if(movesperpacket == 4 && connecthead != myconnectindex)
                         break;
                     if(ud.recstat != 2)
@@ -1948,6 +1949,7 @@ cheat_for_port_credits:
                     }
                     break;
                 case 2:
+                    if(ud.volume_number == 4) break;  /* no loads in roguelite */
                     if(movesperpacket == 4 && connecthead != myconnectindex)
                         break;
                     last_fifty = 2;
@@ -1992,8 +1994,8 @@ cheat_for_port_credits:
             else
             {
                 menutext(c,67                  ,SHX(-2),PHX(-2),"NEW GAME");
-                menutext(c,67+16               ,SHX(-3),PHX(-3),"SAVE GAME");
-                menutext(c,67+16+16            ,SHX(-4),PHX(-4),"LOAD GAME");
+                menutext(c,67+16               ,SHX(-3),(ud.volume_number==4)?1:PHX(-3),"SAVE GAME");
+                menutext(c,67+16+16            ,SHX(-4),(ud.volume_number==4)?1:PHX(-4),"LOAD GAME");
             }
 
             menutext(c,67+16+16+16         ,SHX(-5),PHX(-5),"OPTIONS");
@@ -2073,10 +2075,10 @@ if (!VOLUMEALL) {
                 menutext(160,60+20+20,SHX(-4),PHX(-4),volume_names[2]);
                 if (PLUTOPAK) {
                     menutext(160,60+20+20+20,SHX(-5),PHX(-5),volume_names[3]);
-                    menutext(160,60+20+20+20+20,SHX(-6),PHX(-6),"PROCEDURAL");
+                    menutext(160,60+20+20+20+20,SHX(-6),PHX(-6),"ROGUELITE TEST");
                     menutext(160,60+20+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
                 } else {
-                    menutext(160,60+20+20+20,SHX(-6),PHX(-6),"PROCEDURAL");
+                    menutext(160,60+20+20+20,SHX(-6),PHX(-6),"ROGUELITE TEST");
                     menutext(160,60+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
                 }
             }

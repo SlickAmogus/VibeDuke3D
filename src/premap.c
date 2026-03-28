@@ -1683,8 +1683,17 @@ int enterlevel(unsigned char g)
     vscrn();
     ud.screen_size = i;
 
-    if (ud.volume_number == 4) {
-        /* Procedural level — generate instead of loading */
+    if (ud.volume_number == 4 && ud.level_number == 0) {
+        /* Roguelite hub world — load HUB.MAP */
+        path = "HUB.MAP";
+#ifdef _XBOX
+        extern void xbox_log(const char *fmt, ...);
+        xbox_log("enterlevel: loading hub map %s...\n", path);
+#endif
+        l = loadboard(path, 0, &ps[0].posx, &ps[0].posy, &ps[0].posz,
+                       &ps[0].ang, &ps[0].cursectnum);
+    } else if (ud.volume_number == 4) {
+        /* Roguelite gauntlet — procedural generation */
         extern int procgen_generate_level(int*, int*, int*, short*, short*);
 #ifdef _XBOX
         extern void xbox_log(const char *fmt, ...);
@@ -1710,8 +1719,10 @@ int enterlevel(unsigned char g)
 #endif
     if(l == 0)
     {
-        if (ud.volume_number == 4)
-            strcpy(levname, "PROCGEN");
+        if (ud.volume_number == 4 && ud.level_number > 0)
+            strcpy(levname, "GAUNTLET");
+        else if (ud.volume_number == 4)
+            strcpy(levname, "HUB");
         else
             strcpy(levname, path);
 
@@ -1739,7 +1750,7 @@ int enterlevel(unsigned char g)
     prelevel(g);
 
     /* Procedural mode: hide rooms 2+ enemies after prelevel initialized them */
-    if (ud.volume_number == 4) {
+    if (ud.volume_number == 4 && ud.level_number > 0) {
         extern void procgen_post_prelevel(void);
         procgen_post_prelevel();
     }
