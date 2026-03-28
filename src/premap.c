@@ -1747,6 +1747,18 @@ int enterlevel(unsigned char g)
     clearbufbyte(gotpic,sizeof(gotpic),0L);
     clearbufbyte(hittype,sizeof(hittype),0L);
 
+#ifdef _XBOX
+    /* Activate splitscreen now (not at menu selection) so the background demo
+     * is not disrupted.  Must run before prelevel() so the connect chain is set
+     * up before player-spawn processing. */
+    if (ud.splitscreen && (g & MODE_DEMO) == 0) {
+        extern void xbox_splitscreen_setup(void);
+        extern void xbox_splitscreen_init(void);
+        xbox_splitscreen_setup();
+        xbox_splitscreen_init();
+    }
+#endif
+
     prelevel(g);
 
     /* Procedural mode: hide rooms 2+ enemies after prelevel initialized them */

@@ -957,19 +957,23 @@ void faketimerhandler()
      avgfvel = avgsvel = avgavel = avghorz = avgbits = 0;
      movefifoend[myconnectindex]++;
 
+#ifdef _XBOX
+     /* Splitscreen couch co-op: inject controller 2 input for player 2 and
+      * skip all network code — we are the only machine. */
+     if (ud.splitscreen && numplayers == 2) {
+         extern void xbox_splitscreen_getinput(void *inp);
+         xbox_splitscreen_getinput(&inputfifo[movefifoend[1]&(MOVEFIFOSIZ-1)][1]);
+         movefifoend[1]++;
+         return;
+     }
+#endif
+
      if (numplayers < 2)
      {
           if (ud.multimode > 1) for(i=connecthead;i>=0;i=connectpoint2[i])
               if(i != myconnectindex)
               {
                   //clearbufbyte(&inputfifo[movefifoend[i]&(MOVEFIFOSIZ-1)][i],sizeof(input),0L);
-#ifdef _XBOX
-                  if (ud.splitscreen) {
-                      /* Couch co-op: inject real controller 2 input for player 2 */
-                      extern void xbox_splitscreen_getinput(void *inp);
-                      xbox_splitscreen_getinput(&inputfifo[movefifoend[i]&(MOVEFIFOSIZ-1)][i]);
-                  } else
-#endif
                   if(ud.playerai)
                       computergetinput(i,&inputfifo[movefifoend[i]&(MOVEFIFOSIZ-1)][i]);
                   movefifoend[i]++;
@@ -8850,7 +8854,7 @@ if (!VOLUMEALL) {
             i = 65536;
 
 #ifdef _XBOX
-        if (ud.splitscreen) {
+        if (ud.splitscreen && (ps[myconnectindex].gm & MODE_GAME)) {
             extern void setview(int x1, int y1, int x2, int y2);
             extern int xdim, ydim;
             int half = ydim / 2;
@@ -9183,7 +9187,7 @@ int playback(void)
 
             j = min(max((totalclock-lockclock)*(65536/TICSPERFRAME),0),65536);
 #ifdef _XBOX
-            if (ud.splitscreen) {
+            if (ud.splitscreen && (ps[myconnectindex].gm & MODE_GAME)) {
                 extern void setview(int x1, int y1, int x2, int y2);
                 extern int xdim, ydim;
                 int half = ydim / 2;

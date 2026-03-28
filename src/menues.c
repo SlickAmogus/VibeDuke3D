@@ -1951,12 +1951,12 @@ cheat_for_port_credits:
             /* 0=SPLIT SCREEN 1=HOST 2=JOIN 3=BACK */
             x = probekeys(160,65,20,4, (int[]){ sc_S, sc_H, sc_J, sc_B, 0 });
             if (x == 0) {
-                /* Couch co-op: 2 players, local splitscreen, no network */
+                /* Couch co-op preference: actual numplayers/connect setup happens
+                 * in enterlevel() so the demo running in the background is not
+                 * disrupted.  We only store the user's intent here. */
                 ud.splitscreen = 1;
                 ud.multimode   = 2;
                 ud.m_coop      = 1; /* co-op (shared world, not deathmatch) */
-                xbox_splitscreen_setup(); /* sets numplayers/connecthead/net_state */
-                xbox_splitscreen_init();  /* opens SDL joystick for controller 2 */
                 cmenu(100); /* episode select */
             } else if (x == 1) {
                 xbox_mp_set_role(XBOX_MP_ROLE_HOST, 4);
