@@ -75,7 +75,6 @@ ENGINE_SRCS = \
 	$(CURDIR)/$(ENGINESRC)/defs.c \
 	$(CURDIR)/$(ENGINESRC)/engine.c \
 	$(CURDIR)/$(ENGINESRC)/kplib.c \
-	$(CURDIR)/$(ENGINESRC)/mmulti_null.c \
 	$(CURDIR)/$(ENGINESRC)/osd.c \
 	$(CURDIR)/$(ENGINESRC)/pragmas.c \
 	$(CURDIR)/$(ENGINESRC)/scriptfile.c \
@@ -150,7 +149,8 @@ COMPAT_SRCS = \
 	$(CURDIR)/xbox_compat/xbox_stubs.c \
 	$(CURDIR)/xbox_compat/xbox_startup.c \
 	$(CURDIR)/xbox_compat/dsound_bridge.c \
-	$(CURDIR)/xbox_compat/msvc_compat.c
+	$(CURDIR)/xbox_compat/msvc_compat.c \
+	$(CURDIR)/xbox_compat/mmulti_xbox.c
 
 SRCS = $(COMPAT_SRCS) $(ENGINE_SRCS) $(GAME_SRCS) $(MACT_SRCS) $(AUDIO_SRCS)
 
@@ -174,6 +174,7 @@ NXDK_CFLAGS += -I$(CURDIR)
 # OGG Vorbis: using stb_vorbis (included in vorbis.c), no external libs needed
 # /safeseh:no kept for any remaining mingw-style .o objects
 NXDK_LDFLAGS += /safeseh:no
+NXDK_LDFLAGS += $(NXDK_DIR)/lib/libnxdk_net.lib
 
 # RXDK DirectSound — extracted .obj files (debug sections stripped).
 # lld 18.1.8 crashes on old MSVC .debug$F sections, so we use llvm-objcopy

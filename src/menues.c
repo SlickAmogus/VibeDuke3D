@@ -33,6 +33,16 @@ Modifications for JonoF's port by Jonathon Fowler (jf@jonof.id.au)
 #include <assert.h>
 #ifdef _XBOX
 #include <hal/video.h>
+/* Xbox multiplayer lobby (mmulti_xbox.c) */
+extern void xbox_mp_set_role(int role, int max_pl);
+extern void xbox_mp_host_start(void);
+extern int  xbox_mp_tick(void);
+extern void xbox_mp_get_status(char *buf, int maxlen);
+extern int  xbox_mp_get_state(void);
+extern int  xbox_mp_get_numplayers(void);
+#define XBOX_MP_ROLE_HOST 1
+#define XBOX_MP_ROLE_JOIN 2
+#define XBOX_MP_STATE_GAME 4
 #endif
 
 
@@ -1850,7 +1860,7 @@ cheat_for_port_credits:
             rotatesprite(c<<16,28<<16,65536L,0,INGAMEDUKETHREEDEE,0,0,10,0,0,xdim-1,ydim-1);
             if (PLUTOPAK)   // JBF 20030804
                 rotatesprite((c+100)<<16,36<<16,65536L,0,PLUTOPAKSPRITE+2,(sintable[(totalclock<<4)&2047]>>11),0,2+8,0,0,xdim-1,ydim-1);
-            x = probekeys(c,67,16,6, (int[]){ sc_N, sc_O, sc_L, sc_H, sc_C, sc_Q, 0 });
+            x = probekeys(c,67,16,7, (int[]){ sc_N, sc_O, sc_L, sc_H, sc_C, sc_M, sc_Q, 0 });
             if(x >= 0)
             {
                 if( ud.multimode > 1 && x == 0 && ud.recstat != 2)
@@ -1878,7 +1888,8 @@ cheat_for_port_credits:
                             break;
                         case 3: KB_FlushKeyboardQueue();cmenu(400);break;
                         case 4: cmenu(990);break;
-                        case 5: cmenu(500);break;
+                        case 5: cmenu(800);break;  /* MULTIPLAYER */
+                        case 6: cmenu(500);break;
                     }
                 }
             }
@@ -1913,10 +1924,93 @@ cheat_for_port_credits:
 
             menutext(c,67+16+16+16+16,SHX(-6),PHX(-6),"CREDITS");
 
-            menutext(c,67+16+16+16+16+16,SHX(-7),PHX(-7),"QUIT");
+            menutext(c,67+16+16+16+16+16,SHX(-7),PHX(-7),"MULTIPLAYER");
 
-            gametextpal(160,67+16+16+16+16+16+24,"VibeDuke3D v1.1a",8,1);
+            menutext(c,67+16+16+16+16+16+16,SHX(-8),PHX(-8),"QUIT");
+
+            gametextpal(160,67+16+16+16+16+16+16+24,"VibeDuke3D v1.1a",8,1);
             break;
+
+#ifdef _XBOX
+        /* ── Multiplayer main menu ─────────────────────────────────── */
+        case 800:
+        {
+            rotatesprite(160<<16,200<<15,65536L,0,MENUSCREEN,16,0,10+64,0,0,xdim-1,ydim-1);
+            rotatesprite(160<<16,19<<16,65536L,0,MENUBAR,16,0,10,0,0,xdim-1,ydim-1);
+            menutext(160,24,0,0,"MULTIPLAYER");
+            /* 0=HOST 1=JOIN 2=BACK */
+            x = probekeys(160,70,20,3, (int[]){ sc_H, sc_J, sc_B, 0 });
+            if (x == 0) {
+                xbox_mp_set_role(XBOX_MP_ROLE_HOST, 4);
+                cmenu(801);
+            } else if (x == 1) {
+                xbox_mp_set_role(XBOX_MP_ROLE_JOIN, 4);
+                cmenu(802);
+            } else if (x == 2 || x == -1) {
+                cmenu(0);
+            }
+            menutext(160,70, SHX(-2),PHX(-2),"HOST GAME");
+            menutext(160,90, SHX(-3),PHX(-3),"JOIN GAME");
+            menutext(160,110,SHX(-4),PHX(-4),"BACK");
+            break;
+        }
+
+        /* ── Host lobby: waiting for players, A=start ──────────────── */
+        case 801:
+        {
+            rotatesprite(160<<16,200<<15,65536L,0,MENUSCREEN,16,0,10+64,0,0,xdim-1,ydim-1);
+            rotatesprite(160<<16,19<<16,65536L,0,MENUBAR,16,0,10,0,0,xdim-1,ydim-1);
+            menutext(160,24,0,0,"HOST LOBBY");
+            {
+                char stbuf[96];
+                xbox_mp_get_status(stbuf, sizeof(stbuf));
+                gametext(160,90, stbuf, 0, 2+8+16);
+                gametext(160,120,"UP/DN: player count   A: start game",0,2+8+16);
+                gametext(160,132,"B: cancel",0,2+8+16);
+                int np = xbox_mp_get_numplayers();
+                char nbuf[32];
+                Bsprintf(nbuf,"PLAYERS CONNECTED: %d/4", np);
+                gametext(160,105,nbuf,0,2+8+16);
+            }
+            /* Tick the lobby state machine */
+            if (xbox_mp_tick()) {
+                /* Lobby complete — go to episode selection */
+                cmenu(100);
+                break;
+            }
+            /* A button = start if we have players */
+            CONTROL_GetUserInput(&uinfo);
+            if (uinfo.button0 && xbox_mp_get_numplayers() >= 2) {
+                xbox_mp_host_start();
+                /* Next tick will detect GAME state and go to cmenu(100) */
+            }
+            if (uinfo.button1) cmenu(800);  /* B = cancel */
+            break;
+        }
+
+        /* ── Join lobby: searching for host ────────────────────────── */
+        case 802:
+        {
+            rotatesprite(160<<16,200<<15,65536L,0,MENUSCREEN,16,0,10+64,0,0,xdim-1,ydim-1);
+            rotatesprite(160<<16,19<<16,65536L,0,MENUBAR,16,0,10,0,0,xdim-1,ydim-1);
+            menutext(160,24,0,0,"JOIN LOBBY");
+            {
+                char stbuf[96];
+                xbox_mp_get_status(stbuf, sizeof(stbuf));
+                gametext(160,90, stbuf, 0, 2+8+16);
+                gametext(160,120,"B: cancel",0,2+8+16);
+            }
+            /* Tick the lobby state machine */
+            if (xbox_mp_tick()) {
+                /* HOST sent START — go to episode selection */
+                cmenu(100);
+                break;
+            }
+            CONTROL_GetUserInput(&uinfo);
+            if (uinfo.button1) cmenu(800);  /* B = cancel */
+            break;
+        }
+#endif /* _XBOX */
 
         case 50:
             c = (320>>1);
