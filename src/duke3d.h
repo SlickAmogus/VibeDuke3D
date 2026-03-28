@@ -336,6 +336,8 @@ struct user_defs
     int32 m_ffire,ffire,m_player_skill,m_level_number,m_volume_number,multimode;
     int32 player_skill,level_number,volume_number,m_marker,marker,mouseflip;
 
+    int32 splitscreen; /* Xbox couch co-op: 0=off, 1=2-player splitscreen */
+
 };
 
 struct player_orig

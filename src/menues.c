@@ -43,6 +43,10 @@ extern int  xbox_mp_get_numplayers(void);
 #define XBOX_MP_ROLE_HOST 1
 #define XBOX_MP_ROLE_JOIN 2
 #define XBOX_MP_STATE_GAME 4
+/* Xbox splitscreen (xbox_splitscreen.c + mmulti_xbox.c) */
+extern void xbox_splitscreen_init(void);
+extern void xbox_splitscreen_setup(void);
+extern void xbox_mp_teardown(void);
 #endif
 
 
@@ -1877,6 +1881,9 @@ cheat_for_port_credits:
                     switch(x)
                     {
                         case 0:
+#ifdef _XBOX
+                            if (ud.splitscreen) { ud.splitscreen=0; xbox_mp_teardown(); }
+#endif
                             cmenu(100);
                             break;
 
@@ -1884,6 +1891,9 @@ cheat_for_port_credits:
                         case 2:
                             if(movesperpacket == 4 && connecthead != myconnectindex)
                                 break;
+#ifdef _XBOX
+                            if (ud.splitscreen) { ud.splitscreen=0; xbox_mp_teardown(); }
+#endif
                             cmenu(300);
                             break;
                         case 3: cmenu(800);break;  /* MULTIPLAYER */
@@ -1938,20 +1948,29 @@ cheat_for_port_credits:
             rotatesprite(160<<16,200<<15,65536L,0,MENUSCREEN,16,0,10+64,0,0,xdim-1,ydim-1);
             rotatesprite(160<<16,19<<16,65536L,0,MENUBAR,16,0,10,0,0,xdim-1,ydim-1);
             menutext(160,24,0,0,"MULTIPLAYER");
-            /* 0=HOST 1=JOIN 2=BACK */
-            x = probekeys(160,70,20,3, (int[]){ sc_H, sc_J, sc_B, 0 });
+            /* 0=SPLIT SCREEN 1=HOST 2=JOIN 3=BACK */
+            x = probekeys(160,65,20,4, (int[]){ sc_S, sc_H, sc_J, sc_B, 0 });
             if (x == 0) {
+                /* Couch co-op: 2 players, local splitscreen, no network */
+                ud.splitscreen = 1;
+                ud.multimode   = 2;
+                ud.m_coop      = 1; /* co-op (shared world, not deathmatch) */
+                xbox_splitscreen_setup(); /* sets numplayers/connecthead/net_state */
+                xbox_splitscreen_init();  /* opens SDL joystick for controller 2 */
+                cmenu(100); /* episode select */
+            } else if (x == 1) {
                 xbox_mp_set_role(XBOX_MP_ROLE_HOST, 4);
                 cmenu(801);
-            } else if (x == 1) {
+            } else if (x == 2) {
                 xbox_mp_set_role(XBOX_MP_ROLE_JOIN, 4);
                 cmenu(802);
-            } else if (x == 2 || x == -1) {
+            } else if (x == 3 || x == -1) {
                 cmenu(0);
             }
-            menutext(160,70, SHX(-2),PHX(-2),"HOST GAME");
-            menutext(160,90, SHX(-3),PHX(-3),"JOIN GAME");
-            menutext(160,110,SHX(-4),PHX(-4),"BACK");
+            menutext(160,65, SHX(-2),PHX(-2),"SPLIT SCREEN");
+            menutext(160,85, SHX(-3),PHX(-3),"HOST GAME");
+            menutext(160,105,SHX(-4),PHX(-4),"JOIN GAME");
+            menutext(160,125,SHX(-5),PHX(-5),"BACK");
             break;
         }
 

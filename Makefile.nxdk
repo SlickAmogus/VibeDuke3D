@@ -150,7 +150,8 @@ COMPAT_SRCS = \
 	$(CURDIR)/xbox_compat/xbox_startup.c \
 	$(CURDIR)/xbox_compat/dsound_bridge.c \
 	$(CURDIR)/xbox_compat/msvc_compat.c \
-	$(CURDIR)/xbox_compat/mmulti_xbox.c
+	$(CURDIR)/xbox_compat/mmulti_xbox.c \
+	$(CURDIR)/xbox_compat/xbox_splitscreen.c
 
 SRCS = $(COMPAT_SRCS) $(ENGINE_SRCS) $(GAME_SRCS) $(MACT_SRCS) $(AUDIO_SRCS)
 

@@ -963,6 +963,13 @@ void faketimerhandler()
               if(i != myconnectindex)
               {
                   //clearbufbyte(&inputfifo[movefifoend[i]&(MOVEFIFOSIZ-1)][i],sizeof(input),0L);
+#ifdef _XBOX
+                  if (ud.splitscreen) {
+                      /* Couch co-op: inject real controller 2 input for player 2 */
+                      extern void xbox_splitscreen_getinput(void *inp);
+                      xbox_splitscreen_getinput(&inputfifo[movefifoend[i]&(MOVEFIFOSIZ-1)][i]);
+                  } else
+#endif
                   if(ud.playerai)
                       computergetinput(i,&inputfifo[movefifoend[i]&(MOVEFIFOSIZ-1)][i]);
                   movefifoend[i]++;
@@ -8842,8 +8849,27 @@ if (!VOLUMEALL) {
         else
             i = 65536;
 
-        displayrooms(screenpeek,i);
-        displayrest(i);
+#ifdef _XBOX
+        if (ud.splitscreen) {
+            extern void setview(int x1, int y1, int x2, int y2);
+            extern int xdim, ydim;
+            int half = ydim / 2;
+            /* Top half — player 0 */
+            setview(0, 0, xdim-1, half-1);
+            displayrooms(0, i);
+            displayrest(i);
+            /* Bottom half — player 1 */
+            setview(0, half, xdim-1, ydim-1);
+            displayrooms(1, i);
+            displayrest(i);
+            /* Restore full viewport */
+            setview(0, 0, xdim-1, ydim-1);
+        } else
+#endif
+        {
+            displayrooms(screenpeek,i);
+            displayrest(i);
+        }
 
 //        if( KB_KeyPressed(sc_F) )
 //        {
@@ -9156,8 +9182,24 @@ int playback(void)
             nonsharedkeys();
 
             j = min(max((totalclock-lockclock)*(65536/TICSPERFRAME),0),65536);
-            displayrooms(screenpeek,j);
-            displayrest(j);
+#ifdef _XBOX
+            if (ud.splitscreen) {
+                extern void setview(int x1, int y1, int x2, int y2);
+                extern int xdim, ydim;
+                int half = ydim / 2;
+                setview(0, 0, xdim-1, half-1);
+                displayrooms(0, j);
+                displayrest(j);
+                setview(0, half, xdim-1, ydim-1);
+                displayrooms(1, j);
+                displayrest(j);
+                setview(0, 0, xdim-1, ydim-1);
+            } else
+#endif
+            {
+                displayrooms(screenpeek,j);
+                displayrest(j);
+            }
 
             if(ud.multimode > 1 && ps[myconnectindex].gm )
                 getpackets();

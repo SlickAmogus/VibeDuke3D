@@ -390,11 +390,36 @@ void uninitmultiplayers(void)
 
 void initsingleplayers(void)
 {
-    /* Only reset to single-player if we haven't set up a network game */
+    /* Only reset to single-player if we haven't set up a multiplayer game
+     * (either networked or local splitscreen). */
     if (net_state != NET_STATE_GAME) {
         numplayers = 1; myconnectindex = 0;
         connecthead = 0; connectpoint2[0] = -1;
     }
+}
+
+/* Called by menues.c when the user picks SPLIT SCREEN.
+ * Sets up 2-player state without any network initialisation. */
+void xbox_splitscreen_setup(void)
+{
+    networkmode    = 0;   /* local — no packet I/O */
+    numplayers     = 2;
+    myconnectindex = 0;
+    connecthead    = 0;
+    connectpoint2[0] = 1;
+    connectpoint2[1] = -1;
+    net_state = NET_STATE_GAME; /* prevents initsingleplayers() from resetting us */
+    xbox_log("mmulti_xbox: splitscreen 2-player local setup\n");
+}
+
+/* Called by menues.c when the user returns to single-player (NEW GAME / LOAD).
+ * Tears down splitscreen/LAN state so initsingleplayers() can reset properly. */
+void xbox_mp_teardown(void)
+{
+    net_state = NET_STATE_IDLE;
+    numplayers = 1; myconnectindex = 0;
+    connecthead = 0; connectpoint2[0] = -1;
+    networkmode = -1;
 }
 
 void sendlogon(void)  {}
