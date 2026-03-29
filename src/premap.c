@@ -1480,6 +1480,10 @@ void waitforeverybody()
     int i;
 
     if (numplayers < 2) return;
+#ifdef _XBOX
+    /* Splitscreen: both players are local — no network handshake needed. */
+    if (ud.splitscreen) return;
+#endif
     packbuf[0] = 250;
     for(i=connecthead;i>=0;i=connectpoint2[i])
     {

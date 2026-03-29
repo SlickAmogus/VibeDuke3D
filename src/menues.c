@@ -1965,6 +1965,12 @@ cheat_for_port_credits:
                 xbox_mp_set_role(XBOX_MP_ROLE_JOIN, 4);
                 cmenu(802);
             } else if (x == 3 || x == -1) {
+#ifdef _XBOX
+                /* Clear splitscreen intent on back so multimode/scoreboard resets */
+                ud.splitscreen = 0;
+                ud.multimode   = 1;
+                xbox_mp_teardown();
+#endif
                 cmenu(0);
             }
             menutext(160,65, SHX(-2),PHX(-2),"SPLIT SCREEN");
