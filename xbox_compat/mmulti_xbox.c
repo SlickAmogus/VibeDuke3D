@@ -402,13 +402,15 @@ void initsingleplayers(void)
  * Sets up 2-player state without any network initialisation. */
 void xbox_splitscreen_setup(void)
 {
+    extern unsigned char ready2send;
     networkmode    = 0;   /* local — no packet I/O */
     numplayers     = 2;
     myconnectindex = 0;
     connecthead    = 0;
     connectpoint2[0] = 1;
     connectpoint2[1] = -1;
-    net_state = NET_STATE_GAME; /* prevents initsingleplayers() from resetting us */
+    net_state  = NET_STATE_GAME; /* prevents initsingleplayers() from resetting us */
+    ready2send = 1;              /* allows faketimerhandler() to push input FIFOs */
     xbox_log("mmulti_xbox: splitscreen 2-player local setup\n");
 }
 
