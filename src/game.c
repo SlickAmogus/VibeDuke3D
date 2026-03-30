@@ -4367,6 +4367,16 @@ short spawn( short j, short pn )
                 j = ud.coop;
                 if(j == 2) j = 0;
 
+#ifdef _XBOX
+                /* Splitscreen: route ALL APLAYER map sprites to statnum 10 so
+                 * resetpspritevars can assign one per connected player.
+                 * Single-player maps only have a lotag=0 spawn; with ud.coop=1
+                 * the normal coop routing (j!=lotag → statnum 5) would discard
+                 * it, leaving player 2 with no sprite — breaking triggers. */
+                if(ud.splitscreen)
+                    changespritestat(i,10);
+                else
+#endif
                 if( ud.multimode < 2 || (ud.multimode > 1 && j != sp->lotag) )
                     changespritestat(i,5);
                 else

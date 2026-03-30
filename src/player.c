@@ -103,7 +103,12 @@ void incur_damage( struct player_struct *p )
             if (intensity > 65535) intensity = 65535;
             int duration = d * 8 + 100;
             if (duration > 500) duration = 500;
-            joyRumble(intensity, intensity, duration);
+            if (ud.splitscreen && p == &ps[1]) {
+                extern void xbox_splitscreen_rumble(int,int,int);
+                xbox_splitscreen_rumble(intensity, intensity, duration);
+            } else {
+                joyRumble(intensity, intensity, duration);
+            }
         }
 #endif
     }
@@ -120,7 +125,14 @@ void quickkill(struct player_struct *p)
     sprite[p->i].cstat |= 32768;
     if(ud.god == 0) guts(&sprite[p->i],JIBS6,8,myconnectindex);
 #ifdef _XBOX
-    if (xbox_vibration && ud.recstat != 2) joyRumble(65535, 65535, 500);
+    if (xbox_vibration && ud.recstat != 2) {
+        if (ud.splitscreen && p == &ps[1]) {
+            extern void xbox_splitscreen_rumble(int,int,int);
+            xbox_splitscreen_rumble(65535, 65535, 500);
+        } else {
+            joyRumble(65535, 65535, 500);
+        }
+    }
 #endif
     return;
 }
@@ -2524,7 +2536,12 @@ void processinput(short snum)
             if(ud.recstat == 1) closedemowrite();
             sound(PIPEBOMB_EXPLODE);
 #ifdef _XBOX
-            if (xbox_vibration && ud.recstat != 2) joyRumble(65535, 65535, 600);
+            if (xbox_vibration && ud.recstat != 2) {
+                if (ud.splitscreen && snum == 1) {
+                    extern void xbox_splitscreen_rumble(int,int,int);
+                    xbox_splitscreen_rumble(65535, 65535, 600);
+                } else { joyRumble(65535, 65535, 600); }
+            }
 #endif
             p->pals[0] = 64;
             p->pals[1] = 64;
@@ -2657,7 +2674,12 @@ void processinput(short snum)
         if(p->dead_flag == 0)
         {
 #ifdef _XBOX
-            if (xbox_vibration && ud.recstat != 2) joyRumble(65535, 65535, 500);
+            if (xbox_vibration && ud.recstat != 2) {
+                if (ud.splitscreen && snum == 1) {
+                    extern void xbox_splitscreen_rumble(int,int,int);
+                    xbox_splitscreen_rumble(65535, 65535, 500);
+                } else { joyRumble(65535, 65535, 500); }
+            }
 #endif
             if(s->pal != 1)
             {

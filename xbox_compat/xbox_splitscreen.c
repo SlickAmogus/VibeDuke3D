@@ -109,13 +109,14 @@ void xbox_splitscreen_getinput(void *inp_vp)
     /* fvel/svel: store raw local-space values (-128..127).
      * World-space conversion (momx/momy) happens in faketimerhandler() in game.c
      * using ps[1].ang, matching what the CONTROL system does for player 1. */
-    inp->fvel = (short)((-ly) >> 8);   /* forward/back: push forward = negative Y */
+    /* nxdk raw joystick Y-axis is positive when pushing forward (opposite of
+     * the GameController API convention). Use ly directly (no negation). */
+    inp->fvel = (short)((ly) >> 8);    /* forward/back: push forward = positive Y */
     inp->svel = (short)(lx >> 8);      /* strafe: left/right */
-    /* avel: turn — right stick X. >>8 matches the CONTROL system's shiftval=8
-     * giving the same -127..127 range as player 1's angvel. */
-    inp->avel = (signed char)(rx >> 8);
-    /* horz: look up/down — right stick Y, inverted (push up = negative Y = look up) */
-    inp->horz = (signed char)((-ry) >> 8);
+    /* avel/horz: >>9 gives -63..63 range which feels right in-game.
+     * >>8 (tried previously) was too sensitive. */
+    inp->avel = (signed char)(rx >> 9);
+    inp->horz = (signed char)((-ry) >> 9); /* push up = negative Y = look up */
 
     /* --- Buttons -------------------------------------------------------- */
     /* SDL maps Xbox face buttons: 0=A 1=B 2=X 3=Y 4=LB 5=RB 6=Back 7=Start
@@ -156,4 +157,12 @@ void xbox_splitscreen_getinput(void *inp_vp)
     bits |= ((unsigned int)(p2_weapon & 0xF)) << 8;
 
     inp->bits = bits;
+}
+
+/* Vibrate controller 2 independently from controller 1.
+ * Called from player.c when player 2 takes damage or dies. */
+void xbox_splitscreen_rumble(int low_freq, int high_freq, int duration_ms)
+{
+    if (joy2 == NULL) return;
+    SDL_JoystickRumble(joy2, (Uint16)low_freq, (Uint16)high_freq, (Uint32)duration_ms);
 }
