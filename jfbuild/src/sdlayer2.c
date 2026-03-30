@@ -1867,6 +1867,10 @@ int handleevents(void)
 			case SDL_JOYBUTTONDOWN:
 			case SDL_JOYBUTTONUP:
 				if (appactive) {
+					/* Only process events from controller port 1 (instance 0).
+					 * Splitscreen opens joystick 1 (controller 2) separately via
+					 * SDL_JoystickGetAxis — its events must NOT bleed into joyb. */
+					if (ev.jbutton.which != 0) break;
 					/* JOYBTN logging disabled — fires on every button press/release */
 					static const int xbox_btn_map[] = {
 						SDL_CONTROLLER_BUTTON_A,
@@ -1893,6 +1897,7 @@ int handleevents(void)
 
 			case SDL_JOYHATMOTION:
 				if (appactive) {
+					if (ev.jhat.which != 0) break;
 					joyb &= ~((1 << SDL_CONTROLLER_BUTTON_DPAD_UP)   |
 					          (1 << SDL_CONTROLLER_BUTTON_DPAD_DOWN)  |
 					          (1 << SDL_CONTROLLER_BUTTON_DPAD_LEFT)  |
@@ -1906,6 +1911,7 @@ int handleevents(void)
 
 			case SDL_JOYAXISMOTION:
 				if (appactive) {
+					if (ev.jaxis.which != 0) break;
 					static const int xbox_axis_map[] = {
 						SDL_CONTROLLER_AXIS_LEFTX,
 						SDL_CONTROLLER_AXIS_LEFTY,

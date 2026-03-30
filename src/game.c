@@ -962,7 +962,32 @@ void faketimerhandler()
       * skip all network code — we are the only machine. */
      if (ud.splitscreen && numplayers == 2) {
          extern void xbox_splitscreen_getinput(void *inp);
-         xbox_splitscreen_getinput(&inputfifo[movefifoend[1]&(MOVEFIFOSIZ-1)][1]);
+         /* Read raw local-space values into a temp buffer.
+          * xbox_splitscreen_getinput stores fvel/svel in local controller
+          * space (-127..127). We must convert to world-space momx/momy
+          * exactly as getinput() does for player 1 via the CONTROL system. */
+         input raw2;
+         xbox_splitscreen_getinput(&raw2);
+
+         input *p2 = &inputfifo[movefifoend[1]&(MOVEFIFOSIZ-1)][1];
+         {
+             /* Clamp to MAXVEL=90, then project onto player 2's world axes. */
+             int fwd = raw2.fvel, str = raw2.svel;
+             if (fwd >  90) fwd =  90;
+             if (fwd < -90) fwd = -90;
+             if (str >  90) str =  90;
+             if (str < -90) str = -90;
+             int da = ps[1].ang;
+             int momx = mulscale9(fwd, sintable[(da+2560)&2047]);
+             int momy = mulscale9(fwd, sintable[(da+2048)&2047]);
+             momx    += mulscale9(str, sintable[(da+2048)&2047]);
+             momy    += mulscale9(str, sintable[(da+1536)&2047]);
+             p2->fvel = (short)momx;
+             p2->svel = (short)momy;
+         }
+         p2->avel = raw2.avel;
+         p2->horz = raw2.horz;
+         p2->bits = raw2.bits;
          movefifoend[1]++;
          return;
      }
@@ -8858,15 +8883,19 @@ if (!VOLUMEALL) {
             extern void setview(int x1, int y1, int x2, int y2);
             extern int xdim, ydim;
             int half = ydim / 2;
-            /* Top half — player 0 */
+            /* Top half — player 0: set screenpeek so displayrest renders
+             * player 0's HUD, weapon animation, and palette effects. */
+            screenpeek = 0;
             setview(0, 0, xdim-1, half-1);
             displayrooms(0, i);
             displayrest(i);
             /* Bottom half — player 1 */
+            screenpeek = 1;
             setview(0, half, xdim-1, ydim-1);
             displayrooms(1, i);
             displayrest(i);
-            /* Restore full viewport */
+            /* Restore */
+            screenpeek = 0;
             setview(0, 0, xdim-1, ydim-1);
         } else
 #endif
@@ -9191,12 +9220,15 @@ int playback(void)
                 extern void setview(int x1, int y1, int x2, int y2);
                 extern int xdim, ydim;
                 int half = ydim / 2;
+                screenpeek = 0;
                 setview(0, 0, xdim-1, half-1);
                 displayrooms(0, j);
                 displayrest(j);
+                screenpeek = 1;
                 setview(0, half, xdim-1, ydim-1);
                 displayrooms(1, j);
                 displayrest(j);
+                screenpeek = 0;
                 setview(0, 0, xdim-1, ydim-1);
             } else
 #endif

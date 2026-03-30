@@ -1953,10 +1953,14 @@ cheat_for_port_credits:
             if (x == 0) {
                 /* Couch co-op preference: actual numplayers/connect setup happens
                  * in enterlevel() so the demo running in the background is not
-                 * disrupted.  We only store the user's intent here. */
+                 * disrupted.  We only store the user's intent here.
+                 * ud.coop=1 is set now (not just m_coop) so that:
+                 *   - displayfragbar is suppressed (guard: multimode>1 && coop!=1)
+                 *   - checksectors sounds play for both players (guard: snum==screenpeek || coop==1) */
                 ud.splitscreen = 1;
                 ud.multimode   = 2;
-                ud.m_coop      = 1; /* co-op (shared world, not deathmatch) */
+                ud.m_coop      = 1;
+                ud.coop        = 1;
                 cmenu(100); /* episode select */
             } else if (x == 1) {
                 xbox_mp_set_role(XBOX_MP_ROLE_HOST, 4);
@@ -1969,6 +1973,7 @@ cheat_for_port_credits:
                 /* Clear splitscreen intent on back so multimode/scoreboard resets */
                 ud.splitscreen = 0;
                 ud.multimode   = 1;
+                ud.coop        = 0;
                 xbox_mp_teardown();
 #endif
                 cmenu(0);

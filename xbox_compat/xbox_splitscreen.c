@@ -79,23 +79,26 @@ void xbox_splitscreen_getinput(void *inp_vp)
         if (joy2 == NULL) return;
     }
 
-    SDL_JoystickUpdate();
+    /* State is already fresh from the last SDL_PumpEvents in handleevents().
+     * Do NOT call SDL_JoystickUpdate() here — it pushes SDL_JOYAXISMOTION
+     * events into the queue that would bleed into joyaxis[] via sdlayer2.c
+     * even with the which==0 filter (race between update and handleevents). */
 
     /* --- Axes ----------------------------------------------------------- */
-    /* SDL Xbox layout (nxdk SDL2 port):
+    /* nxdk SDL2 raw joystick axis layout (verified from sdlayer2.c xbox_axis_map):
      *   Axis 0 = Left  stick X  (left=-32768, right=32767)
      *   Axis 1 = Left  stick Y  (up=-32768,   down=32767)
      *   Axis 2 = Left  trigger  (0..32767)
-     *   Axis 3 = Right trigger  (0..32767)
-     *   Axis 4 = Right stick X
-     *   Axis 5 = Right stick Y
-     */
+     *   Axis 3 = Right stick X
+     *   Axis 4 = Right stick Y
+     *   Axis 5 = Right trigger  (0..32767)
+     * Note: axes 3-5 differ from the old (wrong) assumption of 4/5/3. */
     int lx = SDL_JoystickGetAxis(joy2, 0);
     int ly = SDL_JoystickGetAxis(joy2, 1);
-    int rx = SDL_JoystickGetAxis(joy2, 4);
-    int ry = SDL_JoystickGetAxis(joy2, 5);
-    int lt = SDL_JoystickGetAxis(joy2, 2); /* 0..32767 */
-    int rt = SDL_JoystickGetAxis(joy2, 3); /* 0..32767 */
+    int rx = SDL_JoystickGetAxis(joy2, 3); /* right stick X (was 4, wrong) */
+    int ry = SDL_JoystickGetAxis(joy2, 4); /* right stick Y (was 5, wrong) */
+    int lt = SDL_JoystickGetAxis(joy2, 2); /* left  trigger (unchanged)    */
+    int rt = SDL_JoystickGetAxis(joy2, 5); /* right trigger (was 3, wrong) */
 
     /* Apply deadzone */
     if (lx > -DEADZONE && lx < DEADZONE) lx = 0;
@@ -103,14 +106,16 @@ void xbox_splitscreen_getinput(void *inp_vp)
     if (rx > -DEADZONE && rx < DEADZONE) rx = 0;
     if (ry > -DEADZONE && ry < DEADZONE) ry = 0;
 
-    /* fvel: forward/back — left stick Y, inverted (push forward = negative Y) */
-    inp->fvel = (short)((-ly) >> 8);   /* ~-128..127 */
-    /* svel: strafe — left stick X */
-    inp->svel = (short)(lx >> 8);
-    /* avel: turn — right stick X */
-    inp->avel = (signed char)(rx >> 9);  /* ~-64..63 */
-    /* horz: look up/down — right stick Y */
-    inp->horz = (signed char)((-ry) >> 9);
+    /* fvel/svel: store raw local-space values (-128..127).
+     * World-space conversion (momx/momy) happens in faketimerhandler() in game.c
+     * using ps[1].ang, matching what the CONTROL system does for player 1. */
+    inp->fvel = (short)((-ly) >> 8);   /* forward/back: push forward = negative Y */
+    inp->svel = (short)(lx >> 8);      /* strafe: left/right */
+    /* avel: turn — right stick X. >>8 matches the CONTROL system's shiftval=8
+     * giving the same -127..127 range as player 1's angvel. */
+    inp->avel = (signed char)(rx >> 8);
+    /* horz: look up/down — right stick Y, inverted (push up = negative Y = look up) */
+    inp->horz = (signed char)((-ry) >> 8);
 
     /* --- Buttons -------------------------------------------------------- */
     /* SDL maps Xbox face buttons: 0=A 1=B 2=X 3=Y 4=LB 5=RB 6=Back 7=Start
