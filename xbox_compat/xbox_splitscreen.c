@@ -109,14 +109,16 @@ void xbox_splitscreen_getinput(void *inp_vp)
     /* fvel/svel: store raw local-space values (-128..127).
      * World-space conversion (momx/momy) happens in faketimerhandler() in game.c
      * using ps[1].ang, matching what the CONTROL system does for player 1. */
-    /* nxdk raw joystick Y-axis is positive when pushing forward (opposite of
-     * the GameController API convention). Use ly directly (no negation). */
-    inp->fvel = (short)((ly) >> 8);    /* forward/back: push forward = positive Y */
-    inp->svel = (short)(lx >> 8);      /* strafe: left/right */
-    /* avel/horz: >>9 gives -63..63 range which feels right in-game.
-     * >>8 (tried previously) was too sensitive. */
+    /* nxdk raw joystick convention: pushing forward = ly negative, left = lx negative.
+     * World-space conversion in faketimerhandler (via mulscale9/sintable) requires
+     * positive fwd for forward motion and positive str for right-strafe.
+     * The strafe sintable term at ang=0 is negative, so str sign is flipped relative
+     * to "push left = move left" — negate lx too so left-push → left-move. */
+    inp->fvel = (short)((-ly) >> 8);   /* forward/back: push forward → positive fvel */
+    inp->svel = (short)((-lx) >> 8);   /* strafe: negate because world-space formula inverts */
+    /* avel/horz: >>9 gives -63..63 range which feels right in-game. */
     inp->avel = (signed char)(rx >> 9);
-    inp->horz = (signed char)((-ry) >> 9); /* push up = negative Y = look up */
+    inp->horz = (signed char)((-ry) >> 9); /* push up = negative ry = look up */
 
     /* --- Buttons -------------------------------------------------------- */
     /* SDL maps Xbox face buttons: 0=A 1=B 2=X 3=Y 4=LB 5=RB 6=Back 7=Start

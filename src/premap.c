@@ -1291,6 +1291,12 @@ void resetpspritevars(unsigned char g)
     char aimmode[MAXPLAYERS],autoaim[MAXPLAYERS],weaponswitch[MAXPLAYERS];
     STATUSBARTYPE tsbar[MAXPLAYERS];
 
+    /* Splitscreen: skip this EGS — it would use ps[0]'s stale demo/previous-level
+     * position.  Instead we spawn player 2's sprite after the loop below, once
+     * ps[0] has been assigned to the map's APLAYER sprite at the correct position. */
+#ifdef _XBOX
+    if (!ud.splitscreen)
+#endif
     EGS(ps[0].cursectnum,ps[0].posx,ps[0].posy,ps[0].posz,
         APLAYER,0,0,0,ps[0].ang,0,0,0,10);
 
@@ -1416,6 +1422,59 @@ void resetpspritevars(unsigned char g)
         else deletesprite(i);
         i = nexti;
     }
+
+#ifdef _XBOX
+    /* Splitscreen: if there are still unassigned connected players after the
+     * sprite loop (single-player maps have only 1 APLAYER spawn), create extra
+     * sprites near player 0's just-assigned position so each player has a valid,
+     * correctly placed sprite.  Using ps[0]'s new position (from the map APLAYER)
+     * rather than the stale demo/previous-level position used by the EGS above. */
+    if (ud.splitscreen)
+    {
+        short xoff = 128;   /* small offset so players don't stack exactly */
+        while (j >= 0)
+        {
+            short ni = EGS(ps[0].cursectnum,
+                           ps[0].posx + xoff, ps[0].posy,
+                           ps[0].posz,
+                           APLAYER, 0, 42, 36, ps[0].ang, 0, 0, -1, 10);
+            if (ni >= 0)
+            {
+                s = &sprite[ni];
+                s->owner = ni;
+                s->shade = 0;
+                s->xoffset = 0;
+                s->clipdist = 64;
+                s->cstat = 1 + 256;
+                s->yvel = j;
+
+                if ((g & MODE_EOL) != MODE_EOL || ps[j].last_extra == 0)
+                {
+                    ps[j].last_extra = max_player_health;
+                    s->extra = max_player_health;
+                }
+                else s->extra = ps[j].last_extra;
+
+                s->pal = ps[j].palookup = which_palookup;
+                which_palookup++;
+                if (which_palookup >= 17) which_palookup = 9;
+
+                ps[j].i = ni;
+                ps[j].frag_ps = j;
+                hittype[ni].owner = ni;
+
+                hittype[ni].bposx = ps[j].bobposx = ps[j].oposx = ps[j].posx = s->x;
+                hittype[ni].bposy = ps[j].bobposy = ps[j].oposy = ps[j].posy = s->y;
+                hittype[ni].bposz = ps[j].oposz    = ps[j].posz             = s->z;
+                ps[j].oang = ps[j].ang = s->ang;
+
+                updatesector(s->x, s->y, &ps[j].cursectnum);
+            }
+            xoff += 128;
+            j = connectpoint2[j];
+        }
+    }
+#endif
 }
 
 void clearfrags(void)
