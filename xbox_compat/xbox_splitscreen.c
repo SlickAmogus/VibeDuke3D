@@ -44,10 +44,9 @@ typedef struct {
  * Opened lazily on first call to xbox_splitscreen_init(). */
 static SDL_Joystick *joy2 = NULL;
 
-/* Current weapon slot for player 2 (1-based, matches Duke3D weapon numbering) */
-static int p2_weapon = 1;
-/* Debounce: remember d-pad hat state from last frame */
-static int p2_hat_prev = SDL_HAT_CENTERED;
+/* Debounce: track LB/RB button state from last frame for weapon prev/next */
+static int p2_lb_prev = 0;
+static int p2_rb_prev = 0;
 
 void xbox_splitscreen_init(void)
 {
@@ -116,47 +115,60 @@ void xbox_splitscreen_getinput(void *inp_vp)
      * to "push left = move left" — negate lx too so left-push → left-move. */
     inp->fvel = (short)((-ly) >> 8);   /* forward/back: push forward → positive fvel */
     inp->svel = (short)((-lx) >> 8);   /* strafe: negate because world-space formula inverts */
-    /* avel/horz: >>9 gives -63..63 range which feels right in-game. */
-    inp->avel = (signed char)(rx >> 9);
-    inp->horz = (signed char)((-ry) >> 9); /* push up = negative ry = look up */
+    /* avel/horz: >>10 gives -31..31 range matching P1's feel.
+     * >>9 (-63..63) was too fast; >>10 is closer to the CONTROL system's default. */
+    inp->avel = (signed char)(rx >> 10);
+    inp->horz = (signed char)((-ry) >> 10); /* push up = negative ry = look up */
 
     /* --- Buttons -------------------------------------------------------- */
-    /* SDL maps Xbox face buttons: 0=A 1=B 2=X 3=Y 4=LB 5=RB 6=Back 7=Start
-     *                             8=LeftStick 9=RightStick               */
+    /* Raw SDL joystick button order on nxdk for Xbox OG controller:
+     *   0=A  1=B  2=X  3=Y  4=LB(White)  5=RB(Black)  6=Back  7=Start
+     *   8=LeftStick  9=RightStick
+     * This matches P1's sdlayer2.c xbox_btn_map[] raw ordering.
+     *
+     * Bit layout (player.c loc.bits):
+     *   0=Jump  1=Crouch  2=Fire  5=Run  16=MedKit  20=Inv_Left
+     *   22=QuickKick  25=Jetpack  27=Inv_Right  29=Open  30=Inventory  31=Escape
+     *   8-11=weapon select (0=none, 11=prev, 12=next)
+     *
+     * P1 _functio.h Xbox defaults:
+     *   A=Jump  B=Crouch  X=Open  Y=Inventory
+     *   LB=Prev_Weapon  RB=Next_Weapon
+     *   LT=Run  RT=Fire
+     *   D-up=Jetpack  D-down=MedKit  D-left=Inv_Left  D-right=Inv_Right
+     *   LS=QuickKick  Start=Menu */
     unsigned int bits = 0;
 
-    if (SDL_JoystickGetButton(joy2, 0)) bits |= (1<<0);   /* A → Jump    */
-    if (SDL_JoystickGetButton(joy2, 2)) bits |= (1<<2);   /* X → Fire    */
-    if (SDL_JoystickGetButton(joy2, 1)) bits |= (1<<29);  /* B → Open    */
-    if (SDL_JoystickGetButton(joy2, 3)) bits |= (1<<30);  /* Y → Inventory */
-    if (SDL_JoystickGetButton(joy2, 4)) bits |= (1<<22);  /* LB → QuickKick */
-    if (SDL_JoystickGetButton(joy2, 5)) bits |= (1<<5);   /* RB → Run    */
-    if (SDL_JoystickGetButton(joy2, 7)) bits |= (1<<31);  /* Start → Menu/Esc */
-    if (SDL_JoystickGetButton(joy2, 6)) bits |= (1<<18);  /* Back → center view (map-like) */
+    /* Face buttons */
+    if (SDL_JoystickGetButton(joy2, 0)) bits |= (1<<0);   /* A → Jump       */
+    if (SDL_JoystickGetButton(joy2, 1)) bits |= (1<<1);   /* B → Crouch     */
+    if (SDL_JoystickGetButton(joy2, 2)) bits |= (1<<29);  /* X → Open/Use   */
+    if (SDL_JoystickGetButton(joy2, 3)) bits |= (1<<30);  /* Y → Inventory  */
+    if (SDL_JoystickGetButton(joy2, 8)) bits |= (1<<22);  /* LS → QuickKick */
+    if (SDL_JoystickGetButton(joy2, 7)) bits |= (1<<31);  /* Start → Escape */
 
-    /* RT → Fire (analog trigger threshold) */
-    if (rt > 4000) bits |= (1<<2);
-    /* LT → Crouch */
-    if (lt > 4000) bits |= (1<<1);
+    /* Triggers: RT=Fire, LT=Run (matches P1's digital axis defaults) */
+    if (rt > 4000) bits |= (1<<2);  /* RT → Fire */
+    if (lt > 4000) bits |= (1<<5);  /* LT → Run  */
 
-    /* D-pad (hat 0) — weapon cycling with debounce */
+    /* D-pad: Jetpack / MedKit / Inventory — held state, matches P1 D-pad defaults */
     int hat = SDL_JoystickGetHat(joy2, 0);
+    if (hat & SDL_HAT_UP)    bits |= (1<<25);  /* D-up    → Jetpack        */
+    if (hat & SDL_HAT_DOWN)  bits |= (1<<16);  /* D-down  → MedKit         */
+    if (hat & SDL_HAT_LEFT)  bits |= (1<<20);  /* D-left  → Inventory_Left */
+    if (hat & SDL_HAT_RIGHT) bits |= (1<<27);  /* D-right → Inventory_Right*/
 
-    if ((hat & SDL_HAT_UP)   && !(p2_hat_prev & SDL_HAT_UP))   bits |= (1<<13); /* look up */
-    if ((hat & SDL_HAT_DOWN) && !(p2_hat_prev & SDL_HAT_DOWN)) bits |= (1<<14); /* look down */
+    /* LB/RB: Previous/Next weapon with edge detection.
+     * Encode into bits 8-11 for one frame on press (0 = no change). */
+    int lb_now = SDL_JoystickGetButton(joy2, 4);
+    int rb_now = SDL_JoystickGetButton(joy2, 5);
+    int weapon_j = 0;
+    if (lb_now && !p2_lb_prev) weapon_j = 11; /* Previous_Weapon */
+    if (rb_now && !p2_rb_prev) weapon_j = 12; /* Next_Weapon */
+    p2_lb_prev = lb_now;
+    p2_rb_prev = rb_now;
 
-    if ((hat & SDL_HAT_RIGHT) && !(p2_hat_prev & SDL_HAT_RIGHT)) {
-        p2_weapon++;
-        if (p2_weapon > 10) p2_weapon = 1;
-    }
-    if ((hat & SDL_HAT_LEFT) && !(p2_hat_prev & SDL_HAT_LEFT)) {
-        p2_weapon--;
-        if (p2_weapon < 1) p2_weapon = 10;
-    }
-    p2_hat_prev = hat;
-
-    /* Encode weapon number into bits 8-11 */
-    bits |= ((unsigned int)(p2_weapon & 0xF)) << 8;
+    bits |= ((unsigned int)(weapon_j & 0xF)) << 8;
 
     inp->bits = bits;
 }

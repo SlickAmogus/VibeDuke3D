@@ -1291,11 +1291,26 @@ void resetpspritevars(unsigned char g)
     char aimmode[MAXPLAYERS],autoaim[MAXPLAYERS],weaponswitch[MAXPLAYERS];
     STATUSBARTYPE tsbar[MAXPLAYERS];
 
-    /* Splitscreen: skip this EGS — it would use ps[0]'s stale demo/previous-level
-     * position.  Instead we spawn player 2's sprite after the loop below, once
-     * ps[0] has been assigned to the map's APLAYER sprite at the correct position. */
 #ifdef _XBOX
-    if (!ud.splitscreen)
+    /* Splitscreen: before calling EGS, find the lowest-indexed APLAYER sprite in
+     * statnum 10 (placed first in the map editor = canonical entrance spawn).
+     * Override ps[0].pos with that sprite's position so EGS uses the real map
+     * entrance rather than the stale demo/previous-level position. */
+    if (ud.splitscreen && headspritestat[10] >= 0)
+    {
+        short best = headspritestat[10];
+        short scan_s = nextspritestat[best];
+        while (scan_s >= 0)
+        {
+            if (scan_s < best) best = scan_s;
+            scan_s = nextspritestat[scan_s];
+        }
+        ps[0].posx       = sprite[best].x;
+        ps[0].posy       = sprite[best].y;
+        ps[0].posz       = sprite[best].z;
+        ps[0].cursectnum = sprite[best].sectnum;
+        ps[0].ang        = sprite[best].ang;
+    }
 #endif
     EGS(ps[0].cursectnum,ps[0].posx,ps[0].posy,ps[0].posz,
         APLAYER,0,0,0,ps[0].ang,0,0,0,10);
@@ -1424,55 +1439,28 @@ void resetpspritevars(unsigned char g)
     }
 
 #ifdef _XBOX
-    /* Splitscreen: if there are still unassigned connected players after the
-     * sprite loop (single-player maps have only 1 APLAYER spawn), create extra
-     * sprites near player 0's just-assigned position so each player has a valid,
-     * correctly placed sprite.  Using ps[0]'s new position (from the map APLAYER)
-     * rather than the stale demo/previous-level position used by the EGS above. */
-    if (ud.splitscreen)
+    /* Splitscreen: player 0 was assigned the EGS sprite at the map entrance.
+     * Player 1 was assigned to a random map APLAYER sprite (wrong position).
+     * Relocate player 1's sprite to stand next to player 0 at the entrance. */
+    if (ud.splitscreen && ps[0].i >= 0 && ps[1].i >= 0 && ps[0].i != ps[1].i)
     {
-        short xoff = 128;   /* small offset so players don't stack exactly */
-        while (j >= 0)
-        {
-            short ni = EGS(ps[0].cursectnum,
-                           ps[0].posx + xoff, ps[0].posy,
-                           ps[0].posz,
-                           APLAYER, 0, 42, 36, ps[0].ang, 0, 0, -1, 10);
-            if (ni >= 0)
-            {
-                s = &sprite[ni];
-                s->owner = ni;
-                s->shade = 0;
-                s->xoffset = 0;
-                s->clipdist = 64;
-                s->cstat = 1 + 256;
-                s->yvel = j;
+        short p1i = ps[1].i;
+        int   newx    = ps[0].posx + 128;
+        int   newy    = ps[0].posy;
+        int   newz    = ps[0].posz;
+        short newsect = ps[0].cursectnum;
 
-                if ((g & MODE_EOL) != MODE_EOL || ps[j].last_extra == 0)
-                {
-                    ps[j].last_extra = max_player_health;
-                    s->extra = max_player_health;
-                }
-                else s->extra = ps[j].last_extra;
+        sprite[p1i].x   = newx;
+        sprite[p1i].y   = newy;
+        sprite[p1i].z   = newz;
+        sprite[p1i].ang = ps[0].ang;
+        changespritesect(p1i, newsect);
 
-                s->pal = ps[j].palookup = which_palookup;
-                which_palookup++;
-                if (which_palookup >= 17) which_palookup = 9;
-
-                ps[j].i = ni;
-                ps[j].frag_ps = j;
-                hittype[ni].owner = ni;
-
-                hittype[ni].bposx = ps[j].bobposx = ps[j].oposx = ps[j].posx = s->x;
-                hittype[ni].bposy = ps[j].bobposy = ps[j].oposy = ps[j].posy = s->y;
-                hittype[ni].bposz = ps[j].oposz    = ps[j].posz             = s->z;
-                ps[j].oang = ps[j].ang = s->ang;
-
-                updatesector(s->x, s->y, &ps[j].cursectnum);
-            }
-            xoff += 128;
-            j = connectpoint2[j];
-        }
+        hittype[p1i].bposx = ps[1].bobposx = ps[1].oposx = ps[1].posx = newx;
+        hittype[p1i].bposy = ps[1].bobposy = ps[1].oposy = ps[1].posy = newy;
+        hittype[p1i].bposz = ps[1].oposz              = ps[1].posz  = newz;
+        ps[1].oang = ps[1].ang = ps[0].ang;
+        updatesector(newx, newy, &ps[1].cursectnum);
     }
 #endif
 }
