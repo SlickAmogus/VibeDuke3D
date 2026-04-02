@@ -1896,7 +1896,11 @@ cheat_for_port_credits:
 #endif
                             cmenu(300);
                             break;
-                        case 3: cmenu(800);break;  /* MULTIPLAYER */
+                        case 3:  /* MULTIPLAYER */
+#ifdef _XBOX
+                            { extern int xbox_test_features; if (!xbox_test_features) break; }
+#endif
+                            cmenu(800);break;
                         case 4: KB_FlushKeyboardQueue();cmenu(400);break;
                         case 5: cmenu(990);break;
                         case 6: cmenu(500);break;
@@ -1930,7 +1934,11 @@ cheat_for_port_credits:
                 menutext(c,67+16+16,SHX(-4),1,"LOAD GAME");
             else menutext(c,67+16+16,SHX(-4),PHX(-4),"LOAD GAME");
 
+#ifdef _XBOX
+            { extern int xbox_test_features; menutext(c,67+16+16+16,SHX(-5),xbox_test_features ? PHX(-5) : 1,"MULTIPLAYER"); }
+#else
             menutext(c,67+16+16+16,SHX(-5),PHX(-5),"MULTIPLAYER");
+#endif
 
             menutext(c,67+16+16+16+16,SHX(-6),PHX(-6), VOLUMEALL ? "HELP" : "HOW TO ORDER");
 
@@ -2168,10 +2176,16 @@ if (!VOLUMEALL) {
                 }
                 else if ((!PLUTOPAK && x == 3) || (PLUTOPAK && x == 4))
                 {
-                    // Procedural level.
-                    ud.m_volume_number = 4;
-                    ud.m_level_number = 0;
-                    cmenu(110);
+#ifdef _XBOX
+                    extern int xbox_test_features;
+                    if (xbox_test_features)
+#endif
+                    {
+                        // Procedural level.
+                        ud.m_volume_number = 4;
+                        ud.m_level_number = 0;
+                        cmenu(110);
+                    }
                 }
                 else
                 {
@@ -2199,10 +2213,10 @@ if (!VOLUMEALL) {
                 menutext(160,60+20+20,SHX(-4),PHX(-4),volume_names[2]);
                 if (PLUTOPAK) {
                     menutext(160,60+20+20+20,SHX(-5),PHX(-5),volume_names[3]);
-                    menutext(160,60+20+20+20+20,SHX(-6),PHX(-6),"ROGUELITE TEST");
+                    { extern int xbox_test_features; menutext(160,60+20+20+20+20,SHX(-6),xbox_test_features ? PHX(-6) : 1,"ROGUELITE"); }
                     menutext(160,60+20+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
                 } else {
-                    menutext(160,60+20+20+20,SHX(-6),PHX(-6),"ROGUELITE TEST");
+                    { extern int xbox_test_features; menutext(160,60+20+20+20,SHX(-6),xbox_test_features ? PHX(-6) : 1,"ROGUELITE"); }
                     menutext(160,60+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
                 }
             }
@@ -2374,7 +2388,12 @@ if (!VOLUMEALL) {
                 ud.m_respawn_items = 0;
                 ud.m_respawn_inventory = 0;
 
+#ifdef _XBOX
+                /* Preserve splitscreen multimode=2; only reset to 1 for solo. */
+                ud.multimode = ud.splitscreen ? 2 : 1;
+#else
                 ud.multimode = 1;
+#endif
 
                 if(ud.m_volume_number == 3)
                 {
@@ -3909,13 +3928,14 @@ if (!VOLUMEALL) {
         extern int xbox_stronger_pipebombs;
         extern int xbox_hardcore_mode;
         extern int xbox_double_jump;
+        extern int xbox_test_features;
 
         rotatesprite(320<<15,19<<16,65536L,0,MENUBAR,16,0,10,0,0,xdim-1,ydim-1);
         menutext(320>>1,24,0,0,"EXTRA OPTIONS");
 
         c = 50;
         onbar = 0;
-        x = probe(24,c,20,4);
+        x = probe(24,c,20,5);
 
         switch (x) {
         case -1:
@@ -3935,6 +3955,9 @@ if (!VOLUMEALL) {
         case 3:
             xbox_double_jump = 1 - xbox_double_jump;
             break;
+        case 4:
+            xbox_test_features = 1 - xbox_test_features;
+            break;
         }
 
         gametextpal(40,c, "Bloody Mess", 0, 2);
@@ -3948,6 +3971,9 @@ if (!VOLUMEALL) {
         c += 20;
         gametextpal(40,c, "Double Jump", 0, 2);
         gametextpal(240,c, xbox_double_jump ? "On" : "Off", 0, 0);
+        c += 20;
+        gametextpal(40,c, "Enable test features", 0, 2);
+        gametextpal(240,c, xbox_test_features ? "On" : "Off", 0, 0);
 
         /* Description text at bottom */
         {
@@ -3957,6 +3983,7 @@ if (!VOLUMEALL) {
             case 1: desc = "1.5x blast radius, 1.25x damage."; break;
             case 2: desc = "Always start with only a pistol."; break;
             case 3: desc = "Press jump again mid-air."; break;
+            case 4: desc = "Unlocks Multiplayer and Roguelite."; break;
             }
             if (desc)
                 gametextpal(160-(Bstrlen(desc)<<1), 158, desc, 0, 0);

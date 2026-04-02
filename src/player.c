@@ -41,6 +41,7 @@ int xbox_bloody_mess = 0; /* 0=off, 1=on — enemies always gib on death */
 int xbox_stronger_pipebombs = 0; /* 0=off, 1=on — 1.5x radius, 1.25x damage */
 int xbox_hardcore_mode = 0; /* 0=off, 1=on — start each level with only pistol */
 int xbox_double_jump = 0; /* 0=off, 1=on — allow one extra jump mid-air */
+int xbox_test_features = 0; /* 0=off, 1=on — unlocks Multiplayer and Roguelite */
 #endif
 
 void setpal(struct player_struct *p)

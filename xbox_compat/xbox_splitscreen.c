@@ -54,8 +54,17 @@ void xbox_splitscreen_init(void)
 
     SDL_InitSubSystem(SDL_INIT_JOYSTICK);
     /* Controller index 1 = port 2 on original Xbox (4-port breakaway) */
-    if (SDL_NumJoysticks() > 1)
+    if (SDL_NumJoysticks() > 1) {
         joy2 = SDL_JoystickOpen(1);
+        if (joy2)
+            buildprintf("SS_JOY: controller 2 opened ok\n");
+        else
+            buildprintf("SS_JOY: SDL_JoystickOpen(1) failed (NumJoysticks=%d)\n",
+                SDL_NumJoysticks());
+    } else {
+        buildprintf("SS_JOY: only %d joystick(s) found, no controller 2\n",
+            SDL_NumJoysticks());
+    }
 }
 
 void xbox_splitscreen_shutdown(void)
@@ -74,6 +83,19 @@ void xbox_splitscreen_getinput(void *inp_vp)
     memset(inp, 0, sizeof(*inp));
 
     if (joy2 == NULL) {
+        xbox_splitscreen_init();
+        if (joy2 == NULL) return;
+    }
+
+    /* Detect controller disconnect/reconnect (e.g. breakaway cable pull).
+     * SDL_JoystickGetAttached() returns false when the device is gone.
+     * Close the stale handle and attempt to reopen immediately. */
+    if (!SDL_JoystickGetAttached(joy2)) {
+        buildprintf("SS_JOY: controller 2 disconnected — attempting reopen\n");
+        SDL_JoystickClose(joy2);
+        joy2 = NULL;
+        p2_lb_prev = 0;
+        p2_rb_prev = 0;
         xbox_splitscreen_init();
         if (joy2 == NULL) return;
     }

@@ -1298,13 +1298,15 @@ void resetpspritevars(unsigned char g)
      * entrance rather than the stale demo/previous-level position. */
     if (ud.splitscreen && headspritestat[10] >= 0)
     {
+        /* headspritestat[10] is the LAST sprite inserted into statnum 10
+         * (LIFO).  Sprites are loaded in ascending index order from the map
+         * file, so the HEAD = highest-indexed APLAYER sprite = the one the
+         * original single-player loop would assign to player 0.  Using it
+         * here ensures EGS places the P0 sprite at the canonical entrance. */
         short best = headspritestat[10];
-        short scan_s = nextspritestat[best];
-        while (scan_s >= 0)
-        {
-            if (scan_s < best) best = scan_s;
-            scan_s = nextspritestat[scan_s];
-        }
+        xbox_log("SS_SPAWN: pre-EGS best=%d pos=(%d,%d,%d) sect=%d ang=%d\n",
+            best, sprite[best].x, sprite[best].y, sprite[best].z,
+            sprite[best].sectnum, sprite[best].ang);
         ps[0].posx       = sprite[best].x;
         ps[0].posy       = sprite[best].y;
         ps[0].posz       = sprite[best].z;
@@ -1461,6 +1463,19 @@ void resetpspritevars(unsigned char g)
         hittype[p1i].bposz = ps[1].oposz              = ps[1].posz  = newz;
         ps[1].oang = ps[1].ang = ps[0].ang;
         updatesector(newx, newy, &ps[1].cursectnum);
+    }
+    if (ud.splitscreen)
+    {
+        xbox_log("SS_SPAWN: P0 i=%d cstat=0x%x pos=(%d,%d,%d) ang=%d sect=%d\n",
+            ps[0].i,
+            (ps[0].i >= 0 ? (int)sprite[ps[0].i].cstat : -1),
+            ps[0].posx, ps[0].posy, ps[0].posz, ps[0].ang, ps[0].cursectnum);
+        xbox_log("SS_SPAWN: P1 i=%d cstat=0x%x pos=(%d,%d,%d) ang=%d sect=%d\n",
+            ps[1].i,
+            (ps[1].i >= 0 ? (int)sprite[ps[1].i].cstat : -1),
+            ps[1].posx, ps[1].posy, ps[1].posz, ps[1].ang, ps[1].cursectnum);
+        xbox_log("SS_SPAWN: ud.multimode=%d numplayers=%d numplayersprites=%d\n",
+            ud.multimode, numplayers, numplayersprites);
     }
 #endif
 }

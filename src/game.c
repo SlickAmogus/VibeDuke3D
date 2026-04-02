@@ -8893,6 +8893,22 @@ if (!VOLUMEALL) {
             extern void setview(int x1, int y1, int x2, int y2);
             extern int xdim, ydim;
             int half = ydim / 2;
+
+            /* Diagnostic: log the first 3 splitscreen render frames to
+             * confirm sprite indices, cstat flags, multimode, and positions. */
+            {
+                static int ss_rdlog = 0;
+                if (ss_rdlog < 3) {
+                    xbox_log("SS_RENDER #%d: multimode=%d P0.i=%d cstat=0x%x pos=(%d,%d) P1.i=%d cstat=0x%x pos=(%d,%d)\n",
+                        ss_rdlog, ud.multimode,
+                        ps[0].i, (ps[0].i>=0 ? (int)sprite[ps[0].i].cstat : -1),
+                        ps[0].posx, ps[0].posy,
+                        ps[1].i, (ps[1].i>=0 ? (int)sprite[ps[1].i].cstat : -1),
+                        ps[1].posx, ps[1].posy);
+                    ss_rdlog++;
+                }
+            }
+
             /* Top half — player 0: set screenpeek so displayrest renders
              * player 0's HUD, weapon animation, and palette effects. */
             screenpeek = 0;
