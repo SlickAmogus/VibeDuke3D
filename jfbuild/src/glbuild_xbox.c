@@ -710,19 +710,33 @@ static void APIENTRY xbox_glClear(GLbitfield mask)
 	/* Respect the current viewport for clears — polymost sets glViewport
 	 * to the game window area before glClear, so the border area drawn by
 	 * drawbackground() is preserved.  Fall back to full screen if no
-	 * viewport has been set or if it covers the entire screen. */
+	 * viewport has been set or if it covers the entire screen.
+	 * NOTE: vp_w/vp_h are in logical (xdim x ydim) coordinates.  When the
+	 * game uses an upscaled mode (e.g. xdim=854,ydim=480 on a 1280x720
+	 * physical framebuffer), the logical viewport must be scaled to physical
+	 * pixels before comparing and before calling pb_fill/pb_set_depth. */
 	{
+		extern int xdim, ydim;
+		float sx = (screen_width  > 0 && xdim > 0) ? (float)screen_width  / (float)xdim : 1.0f;
+		float sy = (screen_height > 0 && ydim > 0) ? (float)screen_height / (float)ydim : 1.0f;
 		int cx = 0, cy = 0, cw = screen_width, ch = screen_height;
-		if (vp_valid && ((int)vp_w < screen_width || (int)vp_h < screen_height)) {
-			cx = (int)vp_x;
-			/* OpenGL viewport Y is bottom-up; convert to top-down for NV2A */
-			cy = screen_height - (int)vp_y - (int)vp_h;
-			cw = (int)vp_w;
-			ch = (int)vp_h;
-			if (cx < 0) cx = 0;
-			if (cy < 0) cy = 0;
-			if (cx + cw > screen_width) cw = screen_width - cx;
-			if (cy + ch > screen_height) ch = screen_height - cy;
+		if (vp_valid) {
+			/* Scale logical viewport to physical framebuffer coordinates */
+			int px  = (int)(vp_x * sx + 0.5f);
+			int py  = (int)(vp_y * sy + 0.5f);
+			int pw  = (int)((vp_x + vp_w) * sx + 0.5f) - px;
+			int ph  = (int)((vp_y + vp_h) * sy + 0.5f) - py;
+			if (pw < screen_width || ph < screen_height) {
+				cx = px;
+				/* OpenGL viewport Y is bottom-up; convert to top-down for NV2A */
+				cy = screen_height - py - ph;
+				cw = pw;
+				ch = ph;
+				if (cx < 0) cx = 0;
+				if (cy < 0) cy = 0;
+				if (cx + cw > screen_width) cw = screen_width - cx;
+				if (cy + ch > screen_height) ch = screen_height - cy;
+			}
 		}
 
 		pb_set_depth_stencil_buffer_region(

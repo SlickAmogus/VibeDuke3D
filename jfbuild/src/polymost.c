@@ -85,6 +85,13 @@ Low priority:
 
 int rendmode = 0;
 int usemodels=1, usehightile=1, usegoodalpha=0;
+#ifdef _XBOX
+/* Set to 1 by game.c while rendering a splitscreen viewport so the dastat&8
+ * HUD path uses viewport-relative (dasydim) scaling rather than full-screen
+ * scaling.  Must be 0 outside splitscreen so the single-player full status
+ * bar is not displaced upward by the reduced windowy2 value. */
+int polymost_hud_splitscreen = 0;
+#endif
 
 #include <math.h> //<-important!
 typedef struct { float x, cy[2], fy[2]; int n, p, tag, ctag, ftag; } vsptyp;
@@ -3974,15 +3981,60 @@ void polymost_dorotatesprite (int sx, int sy, int z, short a, short picnum,
 		else
 		{
 				//If not clipping to startmosts, & auto-scaling on, as a
-				//hard-coded bonus, scale to full screen instead
-			if (widescreen) {
-				x = scale(ydim<<16,yxaspect,200*pixelaspect);
-				sx = (xdim<<15)+32768+scale(sx-(320<<15),ydim<<16,200*pixelaspect);
-			} else {
-				x = scale(xdim,yxaspect,320);
-				sx = (xdim<<15)+32768+scale(sx-(320<<15),xdim,320);
+				//hard-coded bonus, scale to full screen instead.
+#ifdef _XBOX
+			{
+				extern int polymost_hud_splitscreen;
+				if (polymost_hud_splitscreen) {
+					// Splitscreen: use viewport-relative dasydim so each player's HUD
+					// renders proportionally within their half-screen viewport.
+					int dasydim = windowy2 - windowy1 + 1;
+					if (widescreen) {
+						x = scale(dasydim<<16,yxaspect,200*pixelaspect);
+						sx = (xdim<<15)+32768+scale(sx-(320<<15),dasydim<<16,200*pixelaspect);
+					} else {
+						x = scale(xdim,yxaspect,320);
+						if (dasydim < ydim) {
+							int ssx = scale(xdim,dasydim,ydim);
+							x = scale(x,dasydim,ydim);
+							sx = (xdim<<15)+32768+scale(sx-(320<<15),ssx,320);
+						} else {
+							sx = (xdim<<15)+32768+scale(sx-(320<<15),xdim,320);
+						}
+					}
+					sy = ((windowy1+windowy2+2)<<15)+mulscale16(sy-(200<<15),x);
+				} else {
+					// Single-player: always use full-screen ydim as the anchor so the
+					// full status bar (which reduces windowy2) is not displaced upward.
+					if (widescreen) {
+						x = scale(ydim<<16,yxaspect,200*pixelaspect);
+						sx = (xdim<<15)+32768+scale(sx-(320<<15),ydim<<16,200*pixelaspect);
+					} else {
+						x = scale(xdim,yxaspect,320);
+						sx = (xdim<<15)+32768+scale(sx-(320<<15),xdim,320);
+					}
+					sy = (ydim<<15)+32768+mulscale16(sy-(200<<15),x);
+				}
 			}
-			sy = (ydim<<15)+32768+mulscale16(sy-(200<<15),x);
+#else
+			{
+				int dasydim = windowy2 - windowy1 + 1;
+				if (widescreen) {
+					x = scale(dasydim<<16,yxaspect,200*pixelaspect);
+					sx = (xdim<<15)+32768+scale(sx-(320<<15),dasydim<<16,200*pixelaspect);
+				} else {
+					x = scale(xdim,yxaspect,320);
+					if (dasydim < ydim) {
+						int ssx = scale(xdim,dasydim,ydim);
+						x = scale(x,dasydim,ydim);
+						sx = (xdim<<15)+32768+scale(sx-(320<<15),ssx,320);
+					} else {
+						sx = (xdim<<15)+32768+scale(sx-(320<<15),xdim,320);
+					}
+				}
+				sy = ((windowy1+windowy2+2)<<15)+mulscale16(sy-(200<<15),x);
+			}
+#endif
 		}
 		z = mulscale16(z,x);
 	}
@@ -4056,7 +4108,7 @@ void polymost_dorotatesprite (int sx, int sy, int z, short a, short picnum,
 			if ((d < y2) != (d < 0)) { py[n] = fy; px[n] = (px2[zz]-px2[z])*d/y2 + px2[z]; n++; }
 			z = zz;
 		} while (z);
-		drawpoly(px,py,n,method);
+			drawpoly(px,py,n,method);
 	}
 
 	globalpicnum = ogpicnum;

@@ -680,7 +680,12 @@ int xyzsound(short num,short i,int x,int y,int z)
 
     if( soundm[num]&4 )
     {
-        if(VoiceToggle==0 || (ud.multimode > 1 && PN == APLAYER && sprite[i].yvel != screenpeek && ud.coop != 1) ) return -1;
+        /* In splitscreen both players are local; allow voice from either player. */
+        if(VoiceToggle==0 || (ud.multimode > 1 && PN == APLAYER && sprite[i].yvel != screenpeek && ud.coop != 1
+#ifdef _XBOX
+            && !(ud.splitscreen && numplayers == 2)
+#endif
+           ) ) return -1;
 
         for(j=0;j<NUM_SOUNDS;j++)
           for(k=0;k<Sound[j].num;k++)
@@ -730,6 +735,25 @@ int xyzsound(short num,short i,int x,int y,int z)
     if( sndist && PN != MUSICANDSFX && !cansee(cx,cy,cz-(24<<8),cs,SX,SY,SZ-(24<<8),SECT) )
         sndist += sndist>>5;
 
+#ifdef _XBOX
+    /* Splitscreen: always use whichever player is closer to the sound source.
+     * Both players are locally present, so neither should miss sounds in their area. */
+    if (ud.splitscreen && numplayers == 2 && PN != MUSICANDSFX) {
+        int cx2 = ps[1].oposx, cy2 = ps[1].oposy, cz2 = ps[1].oposz;
+        short cs2 = ps[1].cursectnum;
+        int sndist2 = FindDistance3D((cx2-x),(cy2-y),(cz2-z)>>4);
+        sndist2 += soundvo[num];
+        if (sndist2 < 0) sndist2 = 0;
+        if (sndist2 && cs2 >= 0 && !cansee(cx2,cy2,cz2-(24<<8),cs2,SX,SY,SZ-(24<<8),SECT))
+            sndist2 += sndist2>>5;
+        if (sndist2 < sndist) {
+            sndist = sndist2;
+            cx = cx2; cy = cy2; cz = cz2; cs = cs2;
+            ca = ps[1].ang + ps[1].look_ang;
+        }
+    }
+#endif
+
     switch(num)
     {
         case PIPEBOMB_EXPLODE:
@@ -756,7 +780,15 @@ int xyzsound(short num,short i,int x,int y,int z)
         else if( badguy(&sprite[i]) && sprite[i].extra <= 0 ) stopsound(num);
     }
 
-    if( PN == APLAYER && sprite[i].yvel == screenpeek )
+    if( PN == APLAYER && (sprite[i].yvel == screenpeek
+#ifdef _XBOX
+        /* Splitscreen: both players are local; treat any local player's own
+         * weapon/action sounds as zero-distance (no 3D positioning). Without
+         * this, P2's shots are 3D-positioned relative to P1, making them
+         * quiet and sporadic whenever the players are apart. */
+        || (ud.splitscreen && numplayers == 2)
+#endif
+       ) )
     {
         sndang = 0;
         sndist = 0;
@@ -1006,7 +1038,11 @@ void pan3dsound(void)
         sy = sprite[i].y;
         sz = sprite[i].z;
 
-        if( PN == APLAYER && sprite[i].yvel == screenpeek)
+        if( PN == APLAYER && (sprite[i].yvel == screenpeek
+#ifdef _XBOX
+            || (ud.splitscreen && numplayers == 2)
+#endif
+           ))
         {
             sndang = 0;
             sndist = 0;
@@ -1025,6 +1061,26 @@ void pan3dsound(void)
 
         if( sndist && PN != MUSICANDSFX && !cansee(cx,cy,cz-(24<<8),cs,sx,sy,sz-(24<<8),SECT) )
             sndist += sndist>>5;
+
+#ifdef _XBOX
+        /* Splitscreen: use whichever player is closer to the sound source,
+         * mirroring the logic in xyzsound.  Without this, pan3dsound stops
+         * any sound > 31444 from P1 even if P2 is right next to the source. */
+        if (ud.splitscreen && numplayers == 2 && PN != MUSICANDSFX && sndist > 0) {
+            int cx2 = ps[1].oposx, cy2 = ps[1].oposy, cz2 = ps[1].oposz;
+            short cs2 = ps[1].cursectnum;
+            int sndist2 = FindDistance3D((cx2-sx),(cy2-sy),(cz2-sz)>>4);
+            sndist2 += soundvo[j];
+            if (sndist2 < 0) sndist2 = 0;
+            if (sndist2 && cs2 >= 0 && !cansee(cx2,cy2,cz2-(24<<8),cs2,sx,sy,sz-(24<<8),SECT))
+                sndist2 += sndist2>>5;
+            if (sndist2 < sndist) {
+                sndist = sndist2;
+                sndang = 2048 + (ps[1].ang + ps[1].look_ang) - getangle(cx2-sx,cy2-sy);
+                sndang &= 2047;
+            }
+        }
+#endif
 
         if(PN == MUSICANDSFX && SLT < 999)
             numenvsnds++;

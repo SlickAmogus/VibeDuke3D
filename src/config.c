@@ -218,7 +218,7 @@ void CONFIG_SetXboxJoystickTuning(void)
     for (i=0; i<MAXJOYAXES; i++) {
         JoystickAnalogueDead[i] = 7000;
         JoystickAnalogueSaturate[i] = 30000;
-        if (i <= 1)       JoystickAnalogueScale[i] = 20000;
+        if (i <= 1)       JoystickAnalogueScale[i] = 24576;
         else if (i == 2)  JoystickAnalogueScale[i] = 20000;
         else if (i == 3)  JoystickAnalogueScale[i] = 16384;
         else              JoystickAnalogueScale[i] = 65536;

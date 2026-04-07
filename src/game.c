@@ -1870,6 +1870,11 @@ void coolgaugetext(short snum)
                 return;
 
      ss = ud.screen_size; if (ss < 4) return;
+#ifdef _XBOX
+     /* Splitscreen always uses the mini status bar — the full bar would
+      * overlap both players' viewports and there isn't room for it. */
+     if (ud.splitscreen && numplayers == 2 && ss > 4) ss = 4;
+#endif
 
      if ( ud.multimode > 1 && ud.coop != 1 )
      {
@@ -2918,6 +2923,14 @@ void drawbackground(void)
     }
 
     y1 = 0; y2 = ydim;
+#ifdef _XBOX
+    /* In splitscreen we force the mini status bar, so treat the screen_size
+     * as 4 for all background-border decisions (suppresses status-bar wing
+     * decorations and the full-bar y2 boundary calculation). */
+    int eff_screen_size = (ud.splitscreen && numplayers == 2) ? 4 : ud.screen_size;
+#else
+#define eff_screen_size ud.screen_size
+#endif
     if( ready2send || (ps[myconnectindex].gm&MODE_GAME) || ud.recstat == 2 )
     {
         /* dapicnum stays as BIGHOLE for in-game screen border */
@@ -2929,7 +2942,7 @@ void drawbackground(void)
             if (ud.multimode > 12) y1 += tilesizy[FRAGBAR];
         }
         y1 = scale(y1 * sbarscale, ydim, 200)>>16;
-        if (ud.screen_size >= 8)
+        if (eff_screen_size >= 8)
             y2 = ROUND16(scale(200<<16,ydim,200)-scale(tilesizy[BOTTOMSTATUSBAR] * sbarscale,ydim,200) + 32768);
     } else {
         // when not rendering a game, tile BIGHOLE across fullscreen
@@ -2939,7 +2952,7 @@ void drawbackground(void)
         return;
     }
 
-    if(ud.screen_size > 8)
+    if(eff_screen_size > 8)
     {
         // across top
         for (y=y1-(y1%tilesizy[dapicnum]); y<windowy1; y+=tilesizy[dapicnum])
@@ -2961,7 +2974,7 @@ void drawbackground(void)
     }
 
     // draw in the bits to the left and right of the status bar and fragbar
-    if (ud.screen_size >= 8 || ud.multimode > 1) {
+    if (eff_screen_size >= 8 || ud.multimode > 1) {
         int cl, cr, barw;
         barw = scale(320*sbarscale,ydim<<16,200*pixelaspect);
         cl = ((xdim<<16)-barw)>>17;
@@ -2975,7 +2988,7 @@ void drawbackground(void)
                     rotatesprite(x<<16,y<<16,65536L,0,dapicnum,8,0,8+16+64+128,cr,0,xdim-1,y1);
             }
 
-        if (ud.screen_size >= 8)
+        if (eff_screen_size >= 8)
             for(y=y2-y2%tilesizy[dapicnum]; y<ydim-1; y+=tilesizy[dapicnum])
                 for(x=0;x<=xdim-1; x+=tilesizx[dapicnum]) {
                     if (x<cl)
@@ -2985,7 +2998,7 @@ void drawbackground(void)
                 }
     }
 
-     if(ud.screen_size > 8)
+     if(eff_screen_size > 8)
      {
           y = 0;
           if(ud.coop != 1)
@@ -3018,6 +3031,9 @@ void drawbackground(void)
      }
 
      pus = pub = NUMPAGES;
+#ifndef _XBOX
+#undef eff_screen_size
+#endif
 }
 
 
@@ -3193,6 +3209,21 @@ void displayrooms(short snum,int smoothratio)
     int tiltcx,tiltcy,tiltcs=0; // JBF 20030807
 
     p = &ps[snum];
+
+#ifdef _XBOX
+    /* Splitscreen mirror fix: gotpic[MIRROR] is a single global flag. In splitscreen,
+     * P1's main drawrooms sets/clears it for P1, then P2's mirror check reads the
+     * P1 state instead of P2's. Fix: persist per-player mirror visibility across
+     * frames, inject each player's own state before their gotpic check, save back
+     * after their main drawrooms updates it. */
+    static unsigned char ss_mirror_seen[2] = {0, 0};
+    if (ud.splitscreen && numplayers == 2 && (unsigned short)snum < 2) {
+        if (ss_mirror_seen[snum])
+            gotpic[MIRROR>>3] |=  (unsigned char)(1<<(MIRROR&7));
+        else
+            gotpic[MIRROR>>3] &= ~(unsigned char)(1<<(MIRROR&7));
+    }
+#endif
 
     if(pub > 0)
     {
@@ -3397,6 +3428,12 @@ void displayrooms(short snum,int smoothratio)
         }
 
         drawrooms(cposx,cposy,cposz,cang,choriz,sect);
+#ifdef _XBOX
+        /* Save this player's mirror visibility (set by drawrooms above) for the
+         * next frame's per-player inject above. */
+        if (ud.splitscreen && numplayers == 2 && (unsigned short)snum < 2)
+            ss_mirror_seen[snum] = (gotpic[MIRROR>>3] >> (MIRROR&7)) & 1;
+#endif
         animatesprites(cposx,cposy,cang,smoothratio);
         drawmasks();
 
@@ -8909,18 +8946,18 @@ if (!VOLUMEALL) {
                 }
             }
 
-            /* Top half — player 0: set screenpeek so displayrest renders
-             * player 0's HUD, weapon animation, and palette effects. */
+            extern int polymost_hud_splitscreen;
+            polymost_hud_splitscreen = 1;
             screenpeek = 0;
             setview(0, 0, xdim-1, half-1);
             displayrooms(0, i);
             displayrest(i);
-            /* Bottom half — player 1 */
             screenpeek = 1;
             setview(0, half, xdim-1, ydim-1);
             displayrooms(1, i);
             displayrest(i);
             /* Restore */
+            polymost_hud_splitscreen = 0;
             screenpeek = 0;
             setview(0, 0, xdim-1, ydim-1);
         } else

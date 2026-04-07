@@ -1946,7 +1946,7 @@ cheat_for_port_credits:
 
             menutext(c,67+16+16+16+16+16+16,SHX(-8),PHX(-8),"QUIT");
 
-            gametextpal(160,67+16+16+16+16+16+16+24,"VibeDuke3D v1.1a",8,1);
+            gametextpal(160,67+16+16+16+16+16+16+24,"VibeDuke3D v1.2",8,1);
             break;
 
 #ifdef _XBOX
@@ -1969,7 +1969,7 @@ cheat_for_port_credits:
                 ud.multimode   = 2;
                 ud.m_coop      = 1;
                 ud.coop        = 1;
-                cmenu(100); /* episode select */
+                cmenu(600); /* create game menu: mode/episode/level/skill */
             } else if (x == 1) {
                 xbox_mp_set_role(XBOX_MP_ROLE_HOST, 4);
                 cmenu(801);
@@ -2097,7 +2097,7 @@ cheat_for_port_credits:
                     cmenu(400);
                     break;
                 case 5:
-                    if(numplayers < 2)
+                    if(numplayers < 2 || ud.splitscreen)
                     {
                         last_fifty = 5;
                         cmenu(501);
@@ -2136,12 +2136,12 @@ if (!VOLUMEALL) {
 } else {
             menutext(c,67+16+16+16+16      ,SHX(-6),PHX(-6)," HELP");
 }
-            if(numplayers > 1)
+            if(numplayers > 1 && !ud.splitscreen)
                 menutext(c,67+16+16+16+16+16   ,SHX(-7),1,"QUIT TO TITLE");
             else menutext(c,67+16+16+16+16+16   ,SHX(-7),PHX(-7),"QUIT TO TITLE");
             menutext(c,67+16+16+16+16+16+16,SHX(-8),PHX(-8),"QUIT GAME");
 
-            gametextpal(160,67+16+16+16+16+16+16+24,"VibeDuke3D v1.1a",8,1);
+            gametextpal(160,67+16+16+16+16+16+16+24,"VibeDuke3D v1.2",8,1);
             break;
 
         case 100:
@@ -4472,6 +4472,14 @@ VOLUME_ALL_40x:
             if(uinfo.button0 || KB_KeyPressed(sc_Y))
             {
                 KB_FlushKeyboardQueue();
+#ifdef _XBOX
+                if (ud.splitscreen) {
+                    extern void xbox_mp_teardown(void);
+                    xbox_mp_teardown();
+                    ud.splitscreen = 0;
+                    ud.multimode = 1;
+                }
+#endif
                 ps[myconnectindex].gm = MODE_DEMO;
                 if(ud.recstat == 1)
                     closedemowrite();

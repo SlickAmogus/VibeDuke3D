@@ -1291,29 +1291,6 @@ void resetpspritevars(unsigned char g)
     char aimmode[MAXPLAYERS],autoaim[MAXPLAYERS],weaponswitch[MAXPLAYERS];
     STATUSBARTYPE tsbar[MAXPLAYERS];
 
-#ifdef _XBOX
-    /* Splitscreen: before calling EGS, find the lowest-indexed APLAYER sprite in
-     * statnum 10 (placed first in the map editor = canonical entrance spawn).
-     * Override ps[0].pos with that sprite's position so EGS uses the real map
-     * entrance rather than the stale demo/previous-level position. */
-    if (ud.splitscreen && headspritestat[10] >= 0)
-    {
-        /* headspritestat[10] is the LAST sprite inserted into statnum 10
-         * (LIFO).  Sprites are loaded in ascending index order from the map
-         * file, so the HEAD = highest-indexed APLAYER sprite = the one the
-         * original single-player loop would assign to player 0.  Using it
-         * here ensures EGS places the P0 sprite at the canonical entrance. */
-        short best = headspritestat[10];
-        xbox_log("SS_SPAWN: pre-EGS best=%d pos=(%d,%d,%d) sect=%d ang=%d\n",
-            best, sprite[best].x, sprite[best].y, sprite[best].z,
-            sprite[best].sectnum, sprite[best].ang);
-        ps[0].posx       = sprite[best].x;
-        ps[0].posy       = sprite[best].y;
-        ps[0].posz       = sprite[best].z;
-        ps[0].cursectnum = sprite[best].sectnum;
-        ps[0].ang        = sprite[best].ang;
-    }
-#endif
     EGS(ps[0].cursectnum,ps[0].posx,ps[0].posy,ps[0].posz,
         APLAYER,0,0,0,ps[0].ang,0,0,0,10);
 
@@ -1440,44 +1417,6 @@ void resetpspritevars(unsigned char g)
         i = nexti;
     }
 
-#ifdef _XBOX
-    /* Splitscreen: player 0 was assigned the EGS sprite at the map entrance.
-     * Player 1 was assigned to a random map APLAYER sprite (wrong position).
-     * Relocate player 1's sprite to stand next to player 0 at the entrance. */
-    if (ud.splitscreen && ps[0].i >= 0 && ps[1].i >= 0 && ps[0].i != ps[1].i)
-    {
-        short p1i = ps[1].i;
-        int   newx    = ps[0].posx + 128;
-        int   newy    = ps[0].posy;
-        int   newz    = ps[0].posz;
-        short newsect = ps[0].cursectnum;
-
-        sprite[p1i].x   = newx;
-        sprite[p1i].y   = newy;
-        sprite[p1i].z   = newz;
-        sprite[p1i].ang = ps[0].ang;
-        changespritesect(p1i, newsect);
-
-        hittype[p1i].bposx = ps[1].bobposx = ps[1].oposx = ps[1].posx = newx;
-        hittype[p1i].bposy = ps[1].bobposy = ps[1].oposy = ps[1].posy = newy;
-        hittype[p1i].bposz = ps[1].oposz              = ps[1].posz  = newz;
-        ps[1].oang = ps[1].ang = ps[0].ang;
-        updatesector(newx, newy, &ps[1].cursectnum);
-    }
-    if (ud.splitscreen)
-    {
-        xbox_log("SS_SPAWN: P0 i=%d cstat=0x%x pos=(%d,%d,%d) ang=%d sect=%d\n",
-            ps[0].i,
-            (ps[0].i >= 0 ? (int)sprite[ps[0].i].cstat : -1),
-            ps[0].posx, ps[0].posy, ps[0].posz, ps[0].ang, ps[0].cursectnum);
-        xbox_log("SS_SPAWN: P1 i=%d cstat=0x%x pos=(%d,%d,%d) ang=%d sect=%d\n",
-            ps[1].i,
-            (ps[1].i >= 0 ? (int)sprite[ps[1].i].cstat : -1),
-            ps[1].posx, ps[1].posy, ps[1].posz, ps[1].ang, ps[1].cursectnum);
-        xbox_log("SS_SPAWN: ud.multimode=%d numplayers=%d numplayersprites=%d\n",
-            ud.multimode, numplayers, numplayersprites);
-    }
-#endif
 }
 
 void clearfrags(void)
