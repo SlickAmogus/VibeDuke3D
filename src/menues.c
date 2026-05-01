@@ -4633,7 +4633,18 @@ VOLUME_ALL_40x:
                 case -1:
                     ud.m_recstat = 0;
                     if(ps[myconnectindex].gm&MODE_GAME) cmenu(50);
-                    else cmenu(0);
+                    else {
+#ifdef _XBOX
+                        if (ud.splitscreen) {
+                            ud.splitscreen = 0;
+                            ud.multimode   = 1;
+                            ud.coop        = 0;
+                            ud.m_coop      = 0;
+                            xbox_mp_teardown();
+                        }
+#endif
+                        cmenu(0);
+                    }
                     break;
                 case 0:
                     ud.m_coop++;

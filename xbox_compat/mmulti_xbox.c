@@ -133,20 +133,35 @@ static unsigned long probe_my_ip(void)
 
 static int init_net_stack(void)
 {
-    if (net_initialized) return 1;
+    if (net_initialized) {
+        xbox_log("mmulti_xbox: init_net_stack already initialized\n");
+        return 1;
+    }
     snprintf(net_status, sizeof(net_status), "CONNECTING TO NETWORK...");
-    xbox_log("mmulti_xbox: nxNetInit (DHCP)...\n");
+    xbox_log("mmulti_xbox: init_net_stack enter, calling nxNetInit DHCP (may block up to 10s)\n");
     nx_net_parameters_t p;
     memset(&p, 0, sizeof(p));
     p.ipv4_mode = NX_NET_DHCP;
     int r = nxNetInit(&p);
+    xbox_log("mmulti_xbox: nxNetInit returned %d\n", r);
     if (r != 0) {
-        xbox_log("mmulti_xbox: nxNetInit failed %d\n", r);
-        snprintf(net_status, sizeof(net_status), "NETWORK INIT FAILED (%d)", r);
+        /* -1 = netif_add failure (no NIC?). -2 = DHCP timeout (no cable/no DHCP server). */
+        const char *why = (r == -2) ? "DHCP TIMEOUT (CHECK CABLE)"
+                        : (r == -1) ? "NIC INIT FAILED"
+                                    : "UNKNOWN";
+        snprintf(net_status, sizeof(net_status), "NET INIT FAILED: %s", why);
         return 0;
     }
+    xbox_log("mmulti_xbox: nxNetInit ok, probing own IP...\n");
     my_ip = probe_my_ip();
-    xbox_log("mmulti_xbox: network up, IP=%08lx\n", (unsigned long)my_ip);
+    if (my_ip == 0) {
+        xbox_log("mmulti_xbox: probe_my_ip returned 0 (no route)\n");
+        snprintf(net_status, sizeof(net_status), "NO IP ASSIGNED");
+        return 0;
+    }
+    xbox_log("mmulti_xbox: network up, IP=%lu.%lu.%lu.%lu\n",
+             (my_ip      ) & 0xFF, (my_ip >>  8) & 0xFF,
+             (my_ip >> 16) & 0xFF, (my_ip >> 24) & 0xFF);
     net_initialized = 1;
     return 1;
 }
@@ -154,6 +169,7 @@ static int init_net_stack(void)
 static int open_socket(void)
 {
     if (net_sock >= 0) { close(net_sock); net_sock = -1; }
+    xbox_log("mmulti_xbox: open_socket: creating UDP socket\n");
     net_sock = socket(AF_INET, SOCK_DGRAM, 0);
     if (net_sock < 0) {
         xbox_log("mmulti_xbox: socket() failed\n");
@@ -168,10 +184,11 @@ static int open_socket(void)
     me.sin_port        = htons(NET_PORT);
     me.sin_addr.s_addr = INADDR_ANY;
     if (bind(net_sock, (struct sockaddr *)&me, sizeof(me)) != 0) {
-        xbox_log("mmulti_xbox: bind() failed\n");
+        xbox_log("mmulti_xbox: bind() port %d failed\n", NET_PORT);
         close(net_sock); net_sock = -1;
         return 0;
     }
+    xbox_log("mmulti_xbox: open_socket: bound port %d ok\n", NET_PORT);
     return 1;
 }
 
@@ -196,6 +213,7 @@ static void finalize_connection(void)
 
 void xbox_mp_set_role(int role, int max_pl)
 {
+    xbox_log("mmulti_xbox: xbox_mp_set_role enter role=%d max=%d\n", role, max_pl);
     net_role        = role;
     net_max_players = max_pl < 2 ? 2
                     : max_pl > MAX_NET_PLAYERS ? MAX_NET_PLAYERS : max_pl;
@@ -204,8 +222,17 @@ void xbox_mp_set_role(int role, int max_pl)
     myconnectindex  = 0;
     memset(peer_addr, 0, sizeof(peer_addr));
 
-    if (!init_net_stack()) { net_state = NET_STATE_ERROR; return; }
-    if (!open_socket())    { net_state = NET_STATE_ERROR; return; }
+    if (!init_net_stack()) {
+        xbox_log("mmulti_xbox: init_net_stack failed, entering ERROR state\n");
+        net_state = NET_STATE_ERROR;
+        return;
+    }
+    if (!open_socket()) {
+        xbox_log("mmulti_xbox: open_socket failed, entering ERROR state\n");
+        net_state = NET_STATE_ERROR;
+        return;
+    }
+    xbox_log("mmulti_xbox: socket open, lobby ready\n");
 
     /* Store our own IP as player 0 (needed for the START packet payload) */
     peer_addr[0].sin_family      = AF_INET;

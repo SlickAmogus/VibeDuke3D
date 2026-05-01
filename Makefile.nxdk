@@ -1,6 +1,7 @@
 XBE_TITLE = VibeDuke3D
 NXDK_DIR  ?= $(CURDIR)/nxdk
 NXDK_SDL  = y
+NXDK_NET  = y
 
 # Ensure NXDK_DIR is exported to all subprocess invocations (nxdk-cc needs it)
 export NXDK_DIR
