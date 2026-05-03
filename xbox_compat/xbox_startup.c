@@ -23,6 +23,10 @@
  * NtCreateFile path that successfully reads DUKE3D.GRP. */
 static int xbox_log_fd = -1;
 
+/* Default off for release builds.  Cfg key [Debug]EnableLogging = 1 turns
+ * it on; CONFIG_ReadSetup calls xbox_log_open_file() once the flag is set. */
+int xbox_logging_enabled = 0;
+
 /* _write is declared in io.h but we can also just declare it here */
 extern int _write(int fd, const void *buf, unsigned int count);
 extern int _open(const char *path, int flags, ...);
@@ -47,6 +51,8 @@ void xbox_log(const char *fmt, ...)
     va_list ap;
     int len;
 
+    if (!xbox_logging_enabled) return;
+
     va_start(ap, fmt);
     len = vsnprintf(buf, sizeof(buf), fmt, ap);
     va_end(ap);
@@ -66,10 +72,30 @@ void xbox_log(const char *fmt, ...)
  * Bypasses the 512-byte vsnprintf buffer in xbox_log(). */
 void xbox_log_write(const char *str, int len)
 {
+    if (!xbox_logging_enabled) return;
     if (len <= 0) return;
     OutputDebugStringA(str);
     if (xbox_log_fd >= 0)
         _write(xbox_log_fd, str, (unsigned)len);
+}
+
+/* Called by CONFIG_ReadSetup after cfg load if EnableLogging is true.
+ * Opens dn3d_debug.log for write+truncate.  Idempotent. */
+void xbox_log_open_file(void)
+{
+    char logpath[80];
+    int n = 0;
+    const char *s;
+    const char *lf;
+
+    if (xbox_log_fd >= 0) return;  /* already open */
+
+    s = xbox_writedir;
+    while (*s) logpath[n++] = *s++;
+    lf = "dn3d_debug.log";
+    while (*lf) logpath[n++] = *lf++;
+    logpath[n] = '\0';
+    xbox_log_fd = _open(logpath, _O_WRONLY | _O_CREAT | _O_TRUNC, 0);
 }
 
 /* atexit handler: stop audio DMA and pause hardware before the quick-reboot
@@ -171,19 +197,6 @@ static void xbox_hw_preinit(void)
         }
     }
 
-    /* Open log file in the writable directory */
-    {
-        char logpath[80];
-        int n = 0;
-        const char *s = xbox_writedir;
-        while (*s) logpath[n++] = *s++;
-        const char *lf = "dn3d_debug.log";
-        while (*lf) logpath[n++] = *lf++;
-        logpath[n] = '\0';
-        xbox_log_fd = _open(logpath, _O_WRONLY | _O_CREAT | _O_TRUNC, 0);
-    }
-
-    xbox_log("=== jfduke3d Xbox log ===\n");
-    xbox_log("Video: 640x480 32bpp (safe default)  log_fd=%d\n", xbox_log_fd);
-    xbox_log("Write directory: %s\n", xbox_writedir);
+    /* Log file is opened lazily by xbox_log_open_file() after cfg load
+     * if [Debug]EnableLogging = 1.  Until then, all xbox_log calls no-op. */
 }

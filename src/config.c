@@ -860,6 +860,14 @@ int32 CONFIG_ReadSetup( void )
 
         /* Multiplayer */
         SCRIPT_GetString(scripthandle, "Multiplayer", "PlayerName", myname, sizeof(myname));
+
+        /* Debug — opt-in logging.  Off by default for release builds. */
+        {
+            extern int xbox_logging_enabled;
+            extern void xbox_log_open_file(void);
+            SCRIPT_GetNumber(scripthandle, "Debug", "EnableLogging", &xbox_logging_enabled);
+            if (xbox_logging_enabled) xbox_log_open_file();
+        }
     }
 #endif
 
@@ -931,6 +939,12 @@ void CONFIG_WriteSetup( void )
 
     /* ── Multiplayer ───────────────────────────────────────────── */
     SCRIPT_PutString(scripthandle, "Multiplayer", "PlayerName", &myname[0]);
+
+    /* ── Debug ─────────────────────────────────────────────────── */
+    {
+        extern int xbox_logging_enabled;
+        SCRIPT_PutNumber(scripthandle, "Debug", "EnableLogging", xbox_logging_enabled, false, false);
+    }
 
     SCRIPT_Save(scripthandle, setupwritepath);
     SCRIPT_Free(scripthandle);

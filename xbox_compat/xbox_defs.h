@@ -96,6 +96,8 @@ static inline BOOL GlobalMemoryStatusEx(MEMORYSTATUSEX *ms)
 extern "C" {
 #endif
 void xbox_log(const char *fmt, ...);
+void xbox_log_open_file(void);
+extern int xbox_logging_enabled;
 #ifdef __cplusplus
 }
 #endif
