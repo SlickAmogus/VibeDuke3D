@@ -815,6 +815,54 @@ int32 CONFIG_ReadSetup( void )
 
     //CONFIG_SetupMouse(scripthandle);
     //CONFIG_SetupJoystick(scripthandle);
+
+#ifdef _XBOX
+    /* Xbox release cfg uses cleaner section names. Read those after the
+     * legacy reads above so a freshly-saved cfg picks up here, while older
+     * cfgs upgrade naturally on next save. */
+    {
+        extern int xbox_vibration, xbox_bloody_mess, xbox_stronger_pipebombs;
+        extern int xbox_hardcore_mode, xbox_double_jump;
+        int32 vib = xbox_vibration, bm = xbox_bloody_mess;
+        int32 sp = xbox_stronger_pipebombs, hc = xbox_hardcore_mode, dj = xbox_double_jump;
+
+        /* Display */
+        SCRIPT_GetNumber(scripthandle, "Display", "XboxResMode",   &xbox_res_mode);
+        SCRIPT_GetNumber(scripthandle, "Display", "ScreenSize",    &ud.screen_size);
+        SCRIPT_GetNumber(scripthandle, "Display", "GLTextureMode", &gltexfiltermode);
+        SCRIPT_GetNumber(scripthandle, "Display", "ScreenGamma",   &ud.brightness);
+
+        /* Gameplay */
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "XboxVibration",         &vib);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "XboxBloodyMess",        &bm);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "XboxStrongerPipebombs", &sp);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "XboxHardcoreMode",      &hc);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "XboxDoubleJump",        &dj);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "RunMode",          &RunMode);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "Crosshairs",       &ud.crosshair);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "ShowLevelStats",   &ud.levelstats);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "AutoAim",          &AutoAim);
+        ps[0].auto_aim = AutoAim;
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "WeaponSwitchMode", &ud.weaponswitch);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "Tilt",             &ud.screen_tilting);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "Messages",         &ud.fta_on);
+        SCRIPT_GetNumber(scripthandle, "Gameplay", "Shadows",          &ud.shadows);
+        xbox_vibration = vib; xbox_bloody_mess = bm;
+        xbox_stronger_pipebombs = sp; xbox_hardcore_mode = hc; xbox_double_jump = dj;
+
+        /* Sound */
+        SCRIPT_GetNumber(scripthandle, "Sound", "FXVolume",       &FXVolume);
+        SCRIPT_GetNumber(scripthandle, "Sound", "MusicVolume",    &MusicVolume);
+        SCRIPT_GetNumber(scripthandle, "Sound", "SoundToggle",    &SoundToggle);
+        SCRIPT_GetNumber(scripthandle, "Sound", "VoiceToggle",    &VoiceToggle);
+        SCRIPT_GetNumber(scripthandle, "Sound", "AmbienceToggle", &AmbienceToggle);
+        SCRIPT_GetNumber(scripthandle, "Sound", "MusicToggle",    &MusicToggle);
+
+        /* Multiplayer */
+        SCRIPT_GetString(scripthandle, "Multiplayer", "PlayerName", myname, sizeof(myname));
+    }
+#endif
+
     return 0;
 }
 
@@ -826,6 +874,69 @@ int32 CONFIG_ReadSetup( void )
 ===================
 */
 
+#ifdef _XBOX
+/* Xbox release build: trim cfg to user-facing options only.
+ * Discards old keys by re-initialising the script handle from scratch. */
+void CONFIG_WriteSetup( void )
+{
+    int dummy;
+    char buf[64];
+    extern int xbox_vibration, xbox_bloody_mess, xbox_stronger_pipebombs;
+    extern int xbox_hardcore_mode, xbox_double_jump, xbox_test_features;
+
+    if (!setupread) return;
+    if (scripthandle >= 0) { SCRIPT_Free(scripthandle); scripthandle = -1; }
+    scripthandle = SCRIPT_Init(setupfilename);
+    if (scripthandle < 0) return;
+
+    /* ── Display ───────────────────────────────────────────────── */
+    SCRIPT_PutNumber(scripthandle, "Display", "XboxResMode",   xbox_res_mode,    false, false);
+    SCRIPT_PutNumber(scripthandle, "Display", "ScreenSize",    ud.screen_size,   false, false);
+    SCRIPT_PutNumber(scripthandle, "Display", "GLTextureMode", gltexfiltermode,  false, false);
+    SCRIPT_PutNumber(scripthandle, "Display", "ScreenGamma",   ud.brightness,    false, false);
+
+    /* ── Gameplay ──────────────────────────────────────────────── */
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "XboxVibration",         xbox_vibration,          false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "XboxBloodyMess",        xbox_bloody_mess,        false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "XboxStrongerPipebombs", xbox_stronger_pipebombs, false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "XboxHardcoreMode",      xbox_hardcore_mode,      false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "XboxDoubleJump",        xbox_double_jump,        false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "RunMode",          RunMode,           false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "Crosshairs",       ud.crosshair,      false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "ShowLevelStats",   ud.levelstats,     false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "AutoAim",          AutoAim,           false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "WeaponSwitchMode", ud.weaponswitch,   false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "Tilt",             ud.screen_tilting, false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "Messages",         ud.fta_on,         false, false);
+    SCRIPT_PutNumber(scripthandle, "Gameplay", "Shadows",          ud.shadows,        false, false);
+
+    /* ── Sound ─────────────────────────────────────────────────── */
+    SCRIPT_PutNumber(scripthandle, "Sound", "FXVolume",       FXVolume,       false, false);
+    SCRIPT_PutNumber(scripthandle, "Sound", "MusicVolume",    MusicVolume,    false, false);
+    SCRIPT_PutNumber(scripthandle, "Sound", "SoundToggle",    SoundToggle,    false, false);
+    SCRIPT_PutNumber(scripthandle, "Sound", "VoiceToggle",    VoiceToggle,    false, false);
+    SCRIPT_PutNumber(scripthandle, "Sound", "AmbienceToggle", AmbienceToggle, false, false);
+    SCRIPT_PutNumber(scripthandle, "Sound", "MusicToggle",    MusicToggle,    false, false);
+
+    /* ── Controls (axes 0=strafe, 1=move, 2=look-X, 3=look-Y) ──── */
+    for (dummy = 0; dummy < 4; dummy++) {
+        Bsprintf(buf, "JoystickAnalogScale%d", dummy);
+        SCRIPT_PutNumber(scripthandle, "Controls", buf, JoystickAnalogueScale[dummy], false, false);
+    }
+    for (dummy = 0; dummy < 15; dummy++) {
+        Bsprintf(buf, "JoystickButton%d", dummy);
+        SCRIPT_PutString(scripthandle, "Controls", buf,
+                         CONFIG_FunctionNumToName(JoystickFunctions[dummy][0]));
+    }
+
+    /* ── Multiplayer ───────────────────────────────────────────── */
+    SCRIPT_PutString(scripthandle, "Multiplayer", "PlayerName", &myname[0]);
+
+    SCRIPT_Save(scripthandle, setupwritepath);
+    SCRIPT_Free(scripthandle);
+    scripthandle = -1;
+}
+#else
 void CONFIG_WriteSetup( void )
 {
     int32 dummy;
@@ -982,14 +1093,11 @@ void CONFIG_WriteSetup( void )
 
     SCRIPT_PutNumber( scripthandle, "Misc", "EmuMode", EmuMode, false, false);
 
-#ifdef _XBOX
-    SCRIPT_Save (scripthandle, setupwritepath);
-#else
     SCRIPT_Save (scripthandle, setupfilename);
-#endif
     SCRIPT_Free (scripthandle);
     scripthandle = -1;
 }
+#endif /* !_XBOX */
 
 
 int32 CONFIG_GetMapBestTime(char *mapname)
