@@ -2436,7 +2436,9 @@ if (!VOLUMEALL) {
             int io, ii, yy, d=c+160+40, enabled;
 
 #ifdef _XBOX
-            /* Xbox: remove mouse/keyboard-only options */
+            /* Xbox: remove mouse/keyboard-only options.
+             * "Detail" stripped — it gates the software renderer's half-res
+             * mode, which Xbox never uses (always polymost/hardware). */
             static const char *opts[] = {
                 "Crosshair",
                 "Level stats",
@@ -2446,7 +2448,6 @@ if (!VOLUMEALL) {
                 "Auto weapon switch",
                 "-",
                 "Screen size",
-                "Detail",
                 "Shadows",
                 "Screen tilting",
                 "-",
@@ -2454,7 +2455,7 @@ if (!VOLUMEALL) {
                 NULL
             };
             /* Map Xbox io positions back to original switch case numbers */
-            static const int case_map[] = {0, 1, 2, 6, 8, 9, 10, 11, 12, 13};
+            static const int case_map[] = {0, 1, 2, 6, 8, 9, 11, 12, 13};
 #else
             static const char *opts[] = {
                 "Crosshair",
