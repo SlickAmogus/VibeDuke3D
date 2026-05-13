@@ -1897,9 +1897,6 @@ cheat_for_port_credits:
                             cmenu(300);
                             break;
                         case 3:  /* MULTIPLAYER */
-#ifdef _XBOX
-                            { extern int xbox_test_features; if (!xbox_test_features) break; }
-#endif
                             cmenu(800);break;
                         case 4: KB_FlushKeyboardQueue();cmenu(400);break;
                         case 5: cmenu(990);break;
@@ -1934,11 +1931,7 @@ cheat_for_port_credits:
                 menutext(c,67+16+16,SHX(-4),1,"LOAD GAME");
             else menutext(c,67+16+16,SHX(-4),PHX(-4),"LOAD GAME");
 
-#ifdef _XBOX
-            { extern int xbox_test_features; menutext(c,67+16+16+16,SHX(-5),xbox_test_features ? PHX(-5) : 1,"MULTIPLAYER"); }
-#else
             menutext(c,67+16+16+16,SHX(-5),PHX(-5),"MULTIPLAYER");
-#endif
 
             menutext(c,67+16+16+16+16,SHX(-6),PHX(-6), VOLUMEALL ? "HELP" : "HOW TO ORDER");
 
@@ -2151,10 +2144,16 @@ if (!VOLUMEALL) {
                 x = probekeys(160,60,20,4,(int[]){sc_1, sc_2, sc_3, sc_4, 0});
             else if (VOLUMEONE)
                 x = probekeys(160,60,20,3,(int[]){sc_1, sc_2, sc_3, 0});
-            else if (PLUTOPAK)
-                x = probekeys(160,60,20,6,(int[]){sc_1, sc_2, sc_3, sc_4, sc_P, sc_U, 0});
-            else
-                x = probekeys(160,60,20,5,(int[]){sc_1, sc_2, sc_3, sc_P, sc_U, 0});
+            else { extern int xbox_test_features;
+                if (PLUTOPAK)
+                    x = xbox_test_features
+                        ? probekeys(160,60,20,6,(int[]){sc_1, sc_2, sc_3, sc_4, sc_P, sc_U, 0})
+                        : probekeys(160,60,20,5,(int[]){sc_1, sc_2, sc_3, sc_4, sc_U, 0});
+                else
+                    x = xbox_test_features
+                        ? probekeys(160,60,20,5,(int[]){sc_1, sc_2, sc_3, sc_P, sc_U, 0})
+                        : probekeys(160,60,20,4,(int[]){sc_1, sc_2, sc_3, sc_U, 0});
+            }
             if(x >= 0)
             {
                 if (VOLUMEONE)
@@ -2179,13 +2178,24 @@ if (!VOLUMEALL) {
 #ifdef _XBOX
                     extern int xbox_test_features;
                     if (xbox_test_features)
-#endif
                     {
                         // Procedural level.
                         ud.m_volume_number = 4;
                         ud.m_level_number = 0;
                         cmenu(110);
                     }
+                    else
+                    {
+                        /* ROGUELITE hidden — this slot collapses to USER MAP. */
+                        currentlist = 1;
+                        cmenu(101);
+                    }
+#else
+                    // Procedural level.
+                    ud.m_volume_number = 4;
+                    ud.m_level_number = 0;
+                    cmenu(110);
+#endif
                 }
                 else
                 {
@@ -2213,11 +2223,21 @@ if (!VOLUMEALL) {
                 menutext(160,60+20+20,SHX(-4),PHX(-4),volume_names[2]);
                 if (PLUTOPAK) {
                     menutext(160,60+20+20+20,SHX(-5),PHX(-5),volume_names[3]);
-                    { extern int xbox_test_features; menutext(160,60+20+20+20+20,SHX(-6),xbox_test_features ? PHX(-6) : 1,"ROGUELITE"); }
-                    menutext(160,60+20+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
+                    { extern int xbox_test_features;
+                      if (xbox_test_features) {
+                          menutext(160,60+20+20+20+20,SHX(-6),PHX(-6),"ROGUELITE");
+                          menutext(160,60+20+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
+                      } else {
+                          menutext(160,60+20+20+20+20,SHX(-6),PHX(-6),"USER MAP");
+                      } }
                 } else {
-                    { extern int xbox_test_features; menutext(160,60+20+20+20,SHX(-6),xbox_test_features ? PHX(-6) : 1,"ROGUELITE"); }
-                    menutext(160,60+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
+                    { extern int xbox_test_features;
+                      if (xbox_test_features) {
+                          menutext(160,60+20+20+20,SHX(-6),PHX(-6),"ROGUELITE");
+                          menutext(160,60+20+20+20+20,SHX(-7),PHX(-7),"USER MAP");
+                      } else {
+                          menutext(160,60+20+20+20,SHX(-6),PHX(-6),"USER MAP");
+                      } }
                 }
             }
             break;
@@ -3984,7 +4004,7 @@ if (!VOLUMEALL) {
             case 1: desc = "1.5x blast radius, 1.25x damage."; break;
             case 2: desc = "Always start with only a pistol."; break;
             case 3: desc = "Press jump again mid-air."; break;
-            case 4: desc = "Unlocks Multiplayer and Roguelite."; break;
+            case 4: desc = "Unlocks Roguelite."; break;
             }
             if (desc)
                 gametextpal(160-(Bstrlen(desc)<<1), 158, desc, 0, 0);
