@@ -8,3 +8,28 @@
 *.pdb
 *.ilk
 bin/
+
+# Proprietary Duke3D game data (extracted from DUKE3D.GRP, must not be committed)
+*.CON
+*.GRP
+*.DEF
+
+# Microsoft proprietary SDKs (not redistributable)
+RXDK/
+directx-xdk/
+
+# Release-page artwork & screenshots (kept on GitHub Releases, not in source tree)
+/*.bmp
+/*.jpg
+/*.jpeg
+/*.png
+/*.psd
+
+# Diagnostic dumps and build output captures
+apu_dump*.txt
+build_log.txt
+build_out.txt
+debugscreenshots/
+
+# Demo recordings
+*.dmo
