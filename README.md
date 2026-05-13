@@ -3,7 +3,7 @@
 
 Duke Nukem 3D port for the original Xbox, based on [JFDuke3D](http://www.jonof.id.au/jfduke3d) by Jonathon Fowler. Built using the [nxdk](https://github.com/XboxDev/nxdk) open-source Xbox development kit.
 
-This project was almost entirely vibe coded using Claude. We used JFDuke3D as the base and NXDK to get it working on Xbox. The result is a high performance, direct PC port with features like 720P 60 FPS gameplay, and hardware audio with 5.1 surround support.
+This project was heavily AI-assisted using Claude Opus 4.6 and now Opus 4.7. We used JFDuke3D as the base and NXDK to get it working on Xbox. The result is a high performance PC port with features like 720P 60 FPS gameplay and hardware audio with 5.1 surround support. 
 
 ## Installation
 
@@ -16,6 +16,7 @@ FTP or otherwise move the XBE file to the desired location on your Xbox and plac
 - Hardware audio support featuring full 5.1 surround sound via optical
 - Native 720p with auto-detection (480i/480p/720p), can be specified in config if detection fails
 - Full Xbox controller support (dual analog sticks, triggers, vibration)
+- Splitscreen multiplayer! Not seen in Duke 3D since N64
 - Crosshair adjusts to hitscan position, making aiming more accurate (not perfect)
 - Save/load game support
 - Precaches common sprites to improve performance
@@ -68,10 +69,6 @@ Up Up Down Down Left Right Left Right B B A A  - Teleport to Stadium
 - This will not work on emulators due to how rendering is handled and hardware audio!
 - If you see any strange issues, please reach out to me on Discord and attach your log file (link below).
 
-### Future Updates
-
-- Mod support?
-- Multiplayer and couch coop
 
 
 ### Screenshots
@@ -130,8 +127,7 @@ GPLv2 — see GPL.TXT
 
 ## Support
 
-Feel free to message me on Discord @KushAstronaut or join my server (but nobody is in it so I may not notice):\
-https://discord.gg/U29t39WR73 - I am also in most duke or xbox related discord servers
+Feel free to message me on Discord @KushAstronaut, I am in most duke or xbox related discord servers
 
 If you like what I do:\
 [![ko-fi](https://ko-fi.com/img/githubbutton_sm.svg)](https://ko-fi.com/F1F3K8V3B)
