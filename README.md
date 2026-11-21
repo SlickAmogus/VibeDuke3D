@@ -1,4 +1,5 @@
-<img width="1735" height="906" alt="vibeduke3d" src="https://github.com/user-attachments/assets/b8fb668f-670f-453e-b1b6-5b6f7ea17a12" />
+<img width="300" height="157" alt="vibeduke3dsmaller" src="https://github.com/user-attachments/assets/47020e3f-2988-4f8d-b519-bb1b2e269a1a" />
+
 # VibeDuke3D 
 
 Duke Nukem 3D port for the original Xbox, based on [JFDuke3D](http://www.jonof.id.au/jfduke3d) by Jonathon Fowler. Built using the [nxdk](https://github.com/XboxDev/nxdk) open-source Xbox development kit.
